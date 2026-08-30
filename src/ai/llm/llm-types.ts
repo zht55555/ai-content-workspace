@@ -1,5 +1,3 @@
-import type { ZodType } from "zod";
-
 export type LLMRole = "system" | "user" | "assistant";
 
 export type LLMMessage = {
@@ -39,9 +37,8 @@ export type StreamChunk = {
   model?: string;
 };
 
-export type StructuredGenerateRequest<T> = GenerateRequest & {
-  schema: ZodType<T>;
-  maxRetries?: number;
+export type StructuredGenerateRequest = GenerateRequest & {
+  structuredOutputKey?: string;
 };
 
 export type ProviderName = "demo" | "deepseek";
@@ -50,5 +47,5 @@ export interface LLMProvider {
   readonly name: ProviderName;
   generate(request: GenerateRequest): Promise<GenerateResult>;
   stream(request: GenerateRequest): AsyncIterable<StreamChunk>;
-  generateStructured<T>(request: StructuredGenerateRequest<T>): Promise<T>;
+  generateStructured(request: StructuredGenerateRequest): Promise<unknown>;
 }

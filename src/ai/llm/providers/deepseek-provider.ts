@@ -1,5 +1,3 @@
-import { ZodError } from "zod";
-
 import { LLMProviderError } from "../llm-errors";
 import { DEFAULT_MAX_TOKENS, DEFAULT_MODEL, DEFAULT_TEMPERATURE, normalizeFinishReason, normalizeMessages, normalizeUsage, parseJsonContent } from "../llm-utils";
 import type { GenerateRequest, GenerateResult, LLMProvider, StreamChunk, StructuredGenerateRequest } from "../llm-types";
@@ -62,19 +60,13 @@ export class DeepSeekProvider implements LLMProvider {
     }
   }
 
-  async generateStructured<T>(request: StructuredGenerateRequest<T>): Promise<T> {
-    const maxRetries = Math.min(Math.max(request.maxRetries ?? 2, 0), 2);
-    let lastError: unknown;
-    for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
-      try {
-        const result = await this.generate({ ...request, systemPrompt: `${request.systemPrompt ?? ""}\nReturn only valid JSON.`.trim() });
-        return request.schema.parse(parseJsonContent(result.content, this.name));
-      } catch (error) {
-        lastError = error;
-        if (!(error instanceof ZodError) && !(error instanceof SyntaxError)) throw error;
-      }
+  async generateStructured(request: StructuredGenerateRequest): Promise<unknown> {
+    const result = await this.generate({ ...request, systemPrompt: `${request.systemPrompt ?? ""}\nReturn only valid JSON.`.trim() });
+    try {
+      return parseJsonContent(result.content, this.name);
+    } catch (cause) {
+      throw new LLMProviderError("LLM_INVALID_RESPONSE", "DeepSeek returned invalid structured JSON.", this.name, false, { cause });
     }
-    throw new LLMProviderError("LLM_SCHEMA_VALIDATION_ERROR", "DeepSeek structured output failed schema validation.", this.name, false, { cause: lastError });
   }
 
   private request(request: GenerateRequest, stream: false): Promise<DeepSeekResponse>;

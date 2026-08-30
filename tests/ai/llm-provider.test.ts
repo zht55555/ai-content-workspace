@@ -1,11 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { z } from "zod";
-
 import { DemoProvider } from "@/src/ai/llm/providers/demo-provider";
 import { LLMProviderError } from "@/src/ai/llm/llm-errors";
 
 const request = { userPrompt: "Return a greeting" };
-const greetingSchema = z.object({ greeting: z.string() });
 
 describe("DemoProvider", () => {
   it("generates text with normalized usage", async () => {
@@ -25,19 +22,16 @@ describe("DemoProvider", () => {
     expect(chunks).toEqual(["hello", " worl", "d"]);
   });
 
-  it("parses and validates structured output", async () => {
-    const result = await new DemoProvider({ structuredOutput: { greeting: "hello" } }).generateStructured({ ...request, schema: greetingSchema });
+  it("parses structured JSON once and leaves business validation to the Service", async () => {
+    const result = await new DemoProvider({ structuredOutput: { greeting: "hello" } }).generateStructured(request);
 
     expect(result).toEqual({ greeting: "hello" });
   });
 
-  it("throws a schema error after the bounded retry count", async () => {
+  it("throws a provider invalid-response error for malformed JSON without retrying", async () => {
     const provider = new DemoProvider({ mode: "invalid_json" });
 
-    await expect(provider.generateStructured({ ...request, schema: greetingSchema })).rejects.toMatchObject({
-      code: "LLM_SCHEMA_VALIDATION_ERROR",
-      retryable: false,
-    });
+    await expect(provider.generateStructured(request)).rejects.toMatchObject({ code: "LLM_INVALID_RESPONSE", retryable: false });
   });
 
   it("exposes simulated provider errors through the common error model", async () => {

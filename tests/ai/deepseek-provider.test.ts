@@ -1,6 +1,4 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { z } from "zod";
-
 import { DeepSeekProvider } from "@/src/ai/llm/providers/deepseek-provider";
 
 const provider = () => new DeepSeekProvider({ apiKey: "test-key", baseUrl: "https://api.deepseek.test", model: "deepseek-chat" });
@@ -36,10 +34,10 @@ describe("DeepSeekProvider", () => {
     await expect(provider().generate({ userPrompt: "hello" })).rejects.toMatchObject({ code: "LLM_TIMEOUT", retryable: true });
   });
 
-  it("validates structured output returned by DeepSeek", async () => {
+  it("parses structured JSON returned by DeepSeek once", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response({ model: "deepseek-chat", choices: [{ message: { content: '{"value":42}' }, finish_reason: "stop" }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } })));
 
-    const result = await provider().generateStructured({ userPrompt: "json", schema: z.object({ value: z.number() }) });
+    const result = await provider().generateStructured({ userPrompt: "json" });
     expect(result).toEqual({ value: 42 });
   });
 

@@ -119,3 +119,11 @@ DEEPSEEK_MODEL=deepseek-chat
 Phase 3 不会自动调用真实模型；只有显式调用 Provider 时才会发送请求。
 
 Phase 4 使用 `DEMO_CONTENT_WORKFLOW` 验证三步顺序执行、状态持久化、Retry 和 Task 状态联动；本阶段不包含 SSE 或工作台 UI。
+
+## Structured Output
+
+Phase 5 新增独立 Prompt Registry 和 `StructuredGenerationService`。Provider 负责单次请求、JSON 解析和 Provider 错误转换；StructuredGenerationService 负责 Prompt 构建、Zod 校验和最多两次业务级重试。
+
+当前注册了七个版本为 1 的内容 Prompt：`content-analysis`、`hook-analysis`、`structure-analysis`、`emotion-analysis`、`optimization`、`script-generation` 和 `marketing-content`。
+
+`StructuredContentDemoService` 只执行三个结构化步骤：`content-analysis` → `hook-analysis` → `structure-analysis`。各步骤通过 Zod 推导类型传递结果，不依赖 Markdown 解析。本阶段未新增公开 API、数据库字段或 Migration，也未实现 SSE、UI 或完整内容 Workflow。

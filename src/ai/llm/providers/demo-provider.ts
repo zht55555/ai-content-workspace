@@ -1,5 +1,3 @@
-import { ZodError } from "zod";
-
 import { LLMProviderError } from "../llm-errors";
 import { DEFAULT_MODEL, normalizeUsage, parseJsonContent } from "../llm-utils";
 import type { GenerateRequest, GenerateResult, LLMProvider, StreamChunk, StructuredGenerateRequest } from "../llm-types";
@@ -11,6 +9,7 @@ export type DemoProviderOptions = {
   model?: string;
   responseText?: string;
   structuredOutput?: unknown;
+  structuredOutputs?: Record<string, unknown>;
   streamChunkSize?: number;
 };
 
@@ -43,21 +42,16 @@ export class DemoProvider implements LLMProvider {
     yield { delta: "", finishReason: result.finishReason, usage: result.usage, model: result.model };
   }
 
-  async generateStructured<T>(request: StructuredGenerateRequest<T>): Promise<T> {
-    const maxRetries = Math.min(Math.max(request.maxRetries ?? 2, 0), 2);
-    let lastError: unknown;
-    for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
-      try {
-        this.ensureAvailable();
-        const content = this.options.structuredOutput ?? this.options.responseText ?? "{}";
-        const candidate = typeof content === "string" ? parseJsonContent(content, this.name) : content;
-        return request.schema.parse(candidate);
-      } catch (error) {
-        lastError = error;
-        if (!(error instanceof ZodError) && !(error instanceof Error && error.message.includes("invalid JSON"))) throw error;
-      }
+  async generateStructured(request: StructuredGenerateRequest): Promise<unknown> {
+    void request;
+    this.ensureAvailable();
+    const keyedOutput = request.structuredOutputKey ? this.options.structuredOutputs?.[request.structuredOutputKey] : undefined;
+    const content = this.options.mode === "invalid_json" ? "not valid json" : keyedOutput ?? this.options.structuredOutput ?? this.options.responseText ?? "{}";
+    try {
+      return typeof content === "string" ? parseJsonContent(content, this.name) : content;
+    } catch (cause) {
+      throw new LLMProviderError("LLM_INVALID_RESPONSE", "Demo Provider returned invalid structured JSON.", this.name, false, { cause });
     }
-    throw new LLMProviderError("LLM_SCHEMA_VALIDATION_ERROR", "Demo Provider structured output failed schema validation.", this.name, false, { cause: lastError });
   }
 
   private ensureAvailable() {
