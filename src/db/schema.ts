@@ -7,9 +7,11 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
   index,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const taskStatusEnum = pgEnum("task_status", [
   "DRAFT",
@@ -94,7 +96,10 @@ export const workflowRuns = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
-  (table) => [index("workflow_runs_task_id_idx").on(table.taskId)],
+  (table) => [
+    index("workflow_runs_task_id_idx").on(table.taskId),
+    uniqueIndex("workflow_runs_one_active_per_task_idx").on(table.taskId).where(sql`${table.status} in ('PENDING', 'QUEUED', 'RUNNING')`),
+  ],
 );
 
 export const workflowSteps = pgTable(

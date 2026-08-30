@@ -71,8 +71,13 @@ export class WorkflowEngine {
     if (task.task.status === "QUEUED" || task.task.status === "RUNNING") throw new WorkflowError("TASK_ALREADY_RUNNING", "Task already has a queued or running workflow.");
     if (task.task.status === "COMPLETED") throw new WorkflowError("WORKFLOW_INVALID_STATE", "Completed tasks cannot be started again.");
 
-    await this.taskRepository.updateStatus(taskId, "QUEUED");
-    const created = await this.workflowRepository.createRunWithSteps({ taskId, workflowType: definition.type, inputJson: task.input.rawContent }, definition);
+    let created: CreatedWorkflow;
+    try {
+      created = await this.workflowRepository.createRunWithSteps({ taskId, workflowType: definition.type, inputJson: task.input.rawContent }, definition);
+    } catch (error) {
+      if (this.isUniqueViolation(error)) throw new WorkflowError("TASK_ALREADY_RUNNING", "Task already has a queued or running workflow.");
+      throw error;
+    }
     await this.taskRepository.updateStatus(taskId, "RUNNING");
     await this.workflowRepository.updateRun(created.run.id, { status: "RUNNING", startedAt: new Date() });
     await this.publish({ eventType: "workflow.started", workflowRunId: created.run.id, taskId, workflowType: definition.type });
@@ -196,5 +201,11 @@ export class WorkflowEngine {
     if (error instanceof WorkflowError) return { code: error.code, message: error.message };
     if (error instanceof Error && "code" in error && typeof error.code === "string") return { code: error.code, message: error.message };
     return { code: "WORKFLOW_STEP_FAILED", message: error instanceof Error ? error.message : "Workflow step failed." };
+  }
+
+  private isUniqueViolation(error: unknown): boolean {
+    if (typeof error !== "object" || error === null) return false;
+    if ("code" in error && error.code === "23505") return true;
+    return "cause" in error && this.isUniqueViolation(error.cause);
   }
 }

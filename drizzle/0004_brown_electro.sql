@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "workflow_runs_one_active_per_task_idx" ON "workflow_runs" USING btree ("task_id") WHERE "workflow_runs"."status" in ('PENDING', 'QUEUED', 'RUNNING');

@@ -78,6 +78,7 @@ export class DeepSeekProvider implements LLMProvider {
   private request(request: GenerateRequest, stream: true): Promise<Response>;
   private async request(request: GenerateRequest, stream: boolean): Promise<DeepSeekResponse | Response> {
     const controller = new AbortController();
+    const structuredOutputKey = "structuredOutputKey" in request && typeof request.structuredOutputKey === "string" ? request.structuredOutputKey : undefined;
     const timeout = setTimeout(() => controller.abort(), request.signal ? this.options.timeoutMs : this.options.timeoutMs);
     request.signal?.addEventListener("abort", () => controller.abort(), { once: true });
     try {
@@ -89,6 +90,7 @@ export class DeepSeekProvider implements LLMProvider {
           messages: normalizeMessages(request),
           temperature: request.temperature ?? DEFAULT_TEMPERATURE,
           max_tokens: request.maxTokens ?? DEFAULT_MAX_TOKENS,
+          response_format: structuredOutputKey ? { type: "json_object" } : undefined,
           stream,
         }),
         signal: controller.signal,

@@ -10,6 +10,12 @@ export class WorkflowRepository {
 
   async createRunWithSteps(input: { taskId: string; workflowType: string; inputJson: unknown }, definition: WorkflowDefinition) {
     return this.database.transaction(async (transaction) => {
+      const [task] = await transaction
+        .update(schema.tasks)
+        .set({ status: "QUEUED", updatedAt: new Date() })
+        .where(eq(schema.tasks.id, input.taskId))
+        .returning({ id: schema.tasks.id });
+      if (!task) throw new Error("Task update failed before WorkflowRun creation.");
       const [run] = await transaction
         .insert(schema.workflowRuns)
         .values({ taskId: input.taskId, workflowType: input.workflowType, status: "PENDING", inputJson: input.inputJson })

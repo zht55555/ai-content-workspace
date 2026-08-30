@@ -1,5 +1,3 @@
-import { WorkspaceShell } from "@/src/components/workspace/workspace-shell";
-
 export default function HomePage() {
-  return <WorkspaceShell />;
+  return null;
 }

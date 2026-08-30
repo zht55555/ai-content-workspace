@@ -29,6 +29,13 @@
       "when": 1788080998023,
       "tag": "0003_mute_gertrude_yorkes",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788091041359,
+      "tag": "0004_brown_electro",
+      "breakpoints": true
     }
   ]
 }

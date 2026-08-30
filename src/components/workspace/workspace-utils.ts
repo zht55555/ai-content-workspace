@@ -23,6 +23,19 @@ export function getTaskStatusLabel(status: TaskStatus) {
   return taskStatusLabels[status];
 }
 
+export function getTaskIdFromPathname(pathname: string) {
+  const match = /^\/tasks\/([^/]+)\/?$/.exec(pathname);
+  return match ? decodeURIComponent(match[1]) : undefined;
+}
+
+export function getTaskPath(taskId: string) {
+  return `/tasks/${encodeURIComponent(taskId)}`;
+}
+
+export function shouldRefreshTasksOnWorkflowStatusChange(previousStatus: string | undefined, nextStatus: string) {
+  return previousStatus !== undefined && previousStatus !== nextStatus && ["COMPLETED", "FAILED", "CANCELLED"].includes(nextStatus);
+}
+
 export function getWorkflowProgress(steps: Array<{ status: string }>) {
   const completed = steps.filter((step) => step.status === "SUCCESS").length;
   const total = steps.length;

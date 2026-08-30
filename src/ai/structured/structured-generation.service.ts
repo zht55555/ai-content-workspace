@@ -1,4 +1,4 @@
-import { ZodError } from "zod";
+import { z, ZodError } from "zod";
 
 import { LLMProviderError } from "../llm/llm-errors";
 import type { LLMProvider, LLMUsage } from "../llm/llm-types";
@@ -21,7 +21,9 @@ export class StructuredGenerationService {
     let userPrompt: string;
 
     try {
-      userPrompt = definition.buildUserPrompt(input);
+      const prompt = definition.buildUserPrompt(input);
+      const outputSchema = JSON.stringify(z.toJSONSchema(definition.outputSchema), null, 2);
+      userPrompt = `${prompt}\n\nExpected JSON schema (use these exact keys and value types):\n${outputSchema}`;
     } catch (cause) {
       throw new PromptBuildError(`Failed to build prompt ${definition.id}.`, { cause });
     }

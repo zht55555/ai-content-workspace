@@ -48,6 +48,14 @@ describe("StructuredGenerationService", () => {
     expect(provider.calls).toHaveLength(1);
   });
 
+  it("includes the exact Zod output contract in the structured request", async () => {
+    const provider = new SequenceProvider([{ answer: "ok" }]);
+    await new StructuredGenerationService(provider).generate(prompt, { content: "原始内容" });
+
+    expect(provider.calls[0]?.userPrompt).toContain('"answer"');
+    expect(provider.calls[0]?.userPrompt).toContain("Expected JSON schema");
+  });
+
   it("retries Provider invalid JSON and adds a repair instruction", async () => {
     const provider = new SequenceProvider([
       new LLMProviderError("LLM_INVALID_RESPONSE", "invalid JSON", "demo", false, { cause: new SyntaxError("invalid JSON") }),

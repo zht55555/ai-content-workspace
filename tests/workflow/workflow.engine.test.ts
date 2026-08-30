@@ -63,4 +63,15 @@ describe.skipIf(!runIntegrationTests)("WorkflowEngine", () => {
     await expect(new WorkflowEngine().runWorkflow(task.id)).rejects.toMatchObject({ code: "TASK_ALREADY_RUNNING" });
     await expect(new WorkflowEngine().runWorkflow("00000000-0000-4000-8000-000000000000")).rejects.toBeInstanceOf(WorkflowError);
   }, 30_000);
+
+  it("allows only one concurrent workflow start for a task", async () => {
+    const task = await createTask();
+    const starts = await Promise.allSettled([
+      new WorkflowEngine({ provider: new DemoProvider({ demoDelayMs: 50 }) }).startWorkflow(task.id),
+      new WorkflowEngine({ provider: new DemoProvider({ demoDelayMs: 50 }) }).startWorkflow(task.id),
+    ]);
+
+    expect(starts.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(starts.find((result) => result.status === "rejected")).toMatchObject({ reason: { code: "TASK_ALREADY_RUNNING" } });
+  }, 30_000);
 });

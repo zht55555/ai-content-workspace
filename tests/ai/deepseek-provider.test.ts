@@ -48,6 +48,16 @@ describe("DeepSeekProvider", () => {
     await expect(provider().generate({ userPrompt: "hello" })).rejects.not.toThrow("test-key");
   });
 
+  it("enables JSON mode for structured generation", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(response({ model: "deepseek-chat", choices: [{ message: { content: "{}" }, finish_reason: "stop" }] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await provider().generateStructured({ userPrompt: "return json", structuredOutputKey: "test-output" });
+
+    const requestBody = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string) as { response_format?: { type?: string } };
+    expect(requestBody.response_format).toEqual({ type: "json_object" });
+  });
+
   it("maps a streamed completion into common chunks", async () => {
     const encoder = new TextEncoder();
     const body = new ReadableStream({
