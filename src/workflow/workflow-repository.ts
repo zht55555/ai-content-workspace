@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 
 import { db } from "@/src/db/client";
 import * as schema from "@/src/db/schema";
@@ -39,5 +39,15 @@ export class WorkflowRepository {
       this.database.select().from(schema.workflowSteps).where(eq(schema.workflowSteps.workflowRunId, runId)).orderBy(asc(schema.workflowSteps.stepOrder)),
     ]);
     return run[0] ? { run: run[0], steps } : undefined;
+  }
+
+  async findRunForUser(runId: string, userId: string) {
+    const ownedRun = await this.database
+      .select({ id: schema.workflowRuns.id })
+      .from(schema.workflowRuns)
+      .innerJoin(schema.tasks, eq(schema.tasks.id, schema.workflowRuns.taskId))
+      .where(and(eq(schema.workflowRuns.id, runId), eq(schema.tasks.userId, userId)));
+    if (!ownedRun[0]) return undefined;
+    return this.findRun(runId);
   }
 }

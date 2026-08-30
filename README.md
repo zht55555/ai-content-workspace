@@ -127,3 +127,19 @@ Phase 5 新增独立 Prompt Registry 和 `StructuredGenerationService`。Provide
 当前注册了七个版本为 1 的内容 Prompt：`content-analysis`、`hook-analysis`、`structure-analysis`、`emotion-analysis`、`optimization`、`script-generation` 和 `marketing-content`。
 
 `StructuredContentDemoService` 只执行三个结构化步骤：`content-analysis` → `hook-analysis` → `structure-analysis`。各步骤通过 Zod 推导类型传递结果，不依赖 Markdown 解析。本阶段未新增公开 API、数据库字段或 Migration，也未实现 SSE、UI 或完整内容 Workflow。
+
+## Workflow SSE
+
+Phase 6 新增独立的 Workflow Event Bus 与 SSE 事件流。Workflow Engine 只依赖事件发布接口，不依赖 HTTP 或 React；事件在单个持久 Node.js 进程内按 `workflowRunId` 路由。
+
+```text
+POST /api/tasks/:taskId/run
+{ "workflowType": "STRUCTURED_CONTENT_DEMO", "async": true }
+GET  /api/workflow-runs/:runId
+GET  /api/workflow-runs/:runId/events
+GET  /workflow-runs/:runId
+```
+
+详情页先读取 Snapshot，再通过 EventSource 接收后续事件。Snapshot 是最终状态的来源，SSE 只负责实时更新；已结束的 Run 不会保持长连接。SSE 使用标准事件名、事件 ID、JSON 数据和 20 秒 heartbeat，连接关闭时会清理订阅与定时器。
+
+本地调试异步事件时可设置 `DEMO_DELAY_MS=500`，让 DemoProvider 延迟返回，便于观察 Step Timeline。Phase 6 不新增数据库表或 Migration，也不实现 Event Store、跨进程广播、登录和真实 LLM 调用。

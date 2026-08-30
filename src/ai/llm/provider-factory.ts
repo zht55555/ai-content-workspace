@@ -8,11 +8,12 @@ export type ProviderFactoryConfig = {
   apiKey?: string;
   baseUrl?: string;
   model?: string;
+  demoDelayMs?: number;
 };
 
 export function getLLMProvider(config: ProviderFactoryConfig = {}): LLMProvider {
   const provider = config.provider ?? process.env.LLM_PROVIDER ?? "demo";
-  if (provider === "demo") return new DemoProvider();
+  if (provider === "demo") return new DemoProvider({ demoDelayMs: config.demoDelayMs ?? Number(process.env.DEMO_DELAY_MS ?? 0) });
   if (provider === "deepseek") {
     return new DeepSeekProvider({
       apiKey: config.apiKey ?? process.env.DEEPSEEK_API_KEY ?? "",
