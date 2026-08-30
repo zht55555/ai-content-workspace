@@ -102,3 +102,16 @@ DELETE /api/tasks/:taskId         删除 Task 及其 TaskInput
   }
 }
 ```
+
+## LLM Provider
+
+Phase 3 已建立统一的 LLM Provider 抽象，默认使用 Demo Provider，不需要 API Key 即可运行 Provider 测试。后续业务接入 DeepSeek 时，在 `.env` 中设置：
+
+```env
+LLM_PROVIDER=deepseek
+DEEPSEEK_API_KEY=你的密钥
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_MODEL=deepseek-chat
+```
+
+Phase 3 不会自动调用真实模型；只有显式调用 Provider 时才会发送请求。
