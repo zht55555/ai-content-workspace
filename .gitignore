@@ -1,0 +1,57 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Build output
+dist/
+build/
+coverage/
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Logs and runtime output
+*.log
+logs/
+*.pid
+*.pid.lock
+
+# Local databases and runtime state
+*.db
+*.sqlite
+*.sqlite3
+*.local.db
+prisma/*.db
+prisma/*.sqlite
+tmp/
+temp/
+.cache/
+
+# IDE and editor settings
+.idea/
+.vscode/
+*.suo
+*.user
+*.userossc
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Test and tool artifacts
+playwright-report/
+test-results/
+.nyc_output/
+
+# Local Codex/work artifacts
+work/
+outputs/
