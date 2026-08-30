@@ -24,7 +24,7 @@ export type WorkflowErrorSummary = { code: string; message: string };
 
 export type WorkflowEvent =
   | (WorkflowEventBase & { eventType: "workflow.started"; workflowType: string })
-  | (WorkflowEventBase & { eventType: "workflow.completed"; output?: unknown })
+  | (WorkflowEventBase & { eventType: "workflow.completed"; output?: unknown; resultAvailable?: boolean })
   | (WorkflowEventBase & { eventType: "workflow.failed"; error: WorkflowErrorSummary })
   | (WorkflowEventBase & { eventType: "workflow.cancelled"; reason?: string })
   | (WorkflowStepEventBase & { eventType: "workflow.step.started" })

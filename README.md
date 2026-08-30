@@ -89,6 +89,7 @@ PATCH  /api/tasks/:taskId         更新 title 或 status
 DELETE /api/tasks/:taskId         删除 Task 及其 TaskInput
 POST   /api/tasks/:taskId/run     启动 Demo Content Workflow
 GET    /api/workflow-runs/:runId  查询 WorkflowRun 与 Steps
+GET    /api/tasks/:taskId/results/latest  查询最新成功的完整内容分析结果
 ```
 
 创建请求示例：
@@ -127,6 +128,29 @@ Phase 5 新增独立 Prompt Registry 和 `StructuredGenerationService`。Provide
 当前注册了七个版本为 1 的内容 Prompt：`content-analysis`、`hook-analysis`、`structure-analysis`、`emotion-analysis`、`optimization`、`script-generation` 和 `marketing-content`。
 
 `StructuredContentDemoService` 只执行三个结构化步骤：`content-analysis` → `hook-analysis` → `structure-analysis`。各步骤通过 Zod 推导类型传递结果，不依赖 Markdown 解析。本阶段未新增公开 API、数据库字段或 Migration，也未实现 SSE、UI 或完整内容 Workflow。
+
+## Full Content Analysis
+
+Phase 7 新增 `FULL_CONTENT_ANALYSIS`，固定执行七个结构化 Step：
+
+```text
+content-analysis → hook-analysis → structure-analysis → emotion-analysis
+→ optimization → script-generation → marketing-content
+```
+
+启动请求：
+
+```json
+{ "workflowType": "FULL_CONTENT_ANALYSIS", "async": true }
+```
+
+完整结果由 `ContentAnalysisResultSchema` 最终校验后，通过 Finalization Transaction 同时写入 `AnalysisResult`、WorkflowRun 和 Task；事务提交成功后才发布 `workflow.completed`。结果查询接口为：
+
+```text
+GET /api/tasks/:taskId/results/latest
+```
+
+Workflow 页面通过 Snapshot + SSE 展示七步进度，收到 `resultAvailable` 后从上述接口加载正式结果。每次 Structured Provider 调用都会写入 `LLMUsage`；DemoProvider 的 Token 为 0，真实 Provider 未返回 usage 时对应字段保持 NULL，不将未知值统计为真实零消耗。
 
 ## Workflow SSE
 

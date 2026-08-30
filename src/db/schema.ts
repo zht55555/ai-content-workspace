@@ -123,15 +123,21 @@ export const workflowSteps = pgTable(
   ],
 );
 
-export const analysisResults = pgTable("analysis_results", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  taskId: uuid("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
-  workflowRunId: uuid("workflow_run_id").notNull().references(() => workflowRuns.id, { onDelete: "cascade" }),
-  resultJson: jsonb("result_json").notNull(),
-  version: integer("version").default(1).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-});
+export const analysisResults = pgTable(
+  "analysis_results",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    taskId: uuid("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+    workflowRunId: uuid("workflow_run_id").notNull().references(() => workflowRuns.id, { onDelete: "cascade" }),
+    resultType: text("result_type").default("CONTENT_ANALYSIS").notNull(),
+    schemaVersion: text("schema_version").default("content-analysis-result.v1").notNull(),
+    resultJson: jsonb("result_json").notNull(),
+    version: integer("version").default(1).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [unique("analysis_results_workflow_run_unique").on(table.workflowRunId), index("analysis_results_task_created_idx").on(table.taskId, table.createdAt)],
+);
 
 export const promptTemplates = pgTable(
   "prompt_templates",
@@ -151,13 +157,14 @@ export const promptTemplates = pgTable(
 
 export const llmUsages = pgTable("llm_usages", {
   id: uuid("id").defaultRandom().primaryKey(),
+  taskId: uuid("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
   workflowRunId: uuid("workflow_run_id").notNull().references(() => workflowRuns.id, { onDelete: "cascade" }),
   workflowStepId: uuid("workflow_step_id").references(() => workflowSteps.id, { onDelete: "set null" }),
   provider: text("provider").notNull(),
   model: text("model").notNull(),
-  inputTokens: integer("input_tokens").default(0).notNull(),
-  outputTokens: integer("output_tokens").default(0).notNull(),
-  totalTokens: integer("total_tokens").default(0).notNull(),
+  inputTokens: integer("input_tokens"),
+  outputTokens: integer("output_tokens"),
+  totalTokens: integer("total_tokens"),
   latencyMs: integer("latency_ms"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

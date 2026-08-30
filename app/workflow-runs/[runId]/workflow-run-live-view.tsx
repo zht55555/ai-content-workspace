@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { useWorkflowEvents } from "@/src/workflow/events/use-workflow-events";
 import type { WorkflowRunSnapshot } from "@/src/workflow/events/workflow-run.reducer";
+import { ContentAnalysisResultView } from "@/src/workflow/results/content-analysis-result-view";
 
 type ApiWorkflowRun = Omit<WorkflowRunSnapshot, "steps"> & {
   steps: Array<WorkflowRunSnapshot["steps"][number] & { stepKey?: string; stepOrder?: number }>;
@@ -59,6 +60,7 @@ export function WorkflowRunLiveView({ runId }: { runId: string }) {
             ))}
           </ol>
         </section>
+        <ContentAnalysisResultView taskId={snapshot.taskId} enabled={snapshot.resultAvailable === true} />
       </div>
     </main>
   );

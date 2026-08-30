@@ -2,13 +2,14 @@ import { NextResponse } from "next/server";
 import { z, ZodError } from "zod";
 
 import { TaskError } from "@/src/modules/task/task.errors";
+import { fullContentAnalysisWorkflow } from "@/src/workflow/definitions/full-content-analysis-workflow";
 import { structuredContentWorkflow } from "@/src/workflow/definitions/structured-content-workflow";
 import { demoContentWorkflow } from "@/src/workflow/definitions/demo-content-workflow";
 import { WorkflowError } from "@/src/workflow/workflow-errors";
 import { workflowRuntime } from "@/src/workflow/workflow-runtime";
 
 const runRequestSchema = z.object({
-  workflowType: z.enum(["DEMO_CONTENT_WORKFLOW", "STRUCTURED_CONTENT_DEMO"]).default("DEMO_CONTENT_WORKFLOW"),
+  workflowType: z.enum(["DEMO_CONTENT_WORKFLOW", "STRUCTURED_CONTENT_DEMO", "FULL_CONTENT_ANALYSIS"]).default("DEMO_CONTENT_WORKFLOW"),
   async: z.boolean().default(false),
 });
 
@@ -30,7 +31,7 @@ export async function POST(request: Request, context: RunRouteContext) {
     const { taskId } = await context.params;
     const body = request.headers.get("content-type")?.includes("application/json") ? await request.json() : {};
     const options = runRequestSchema.parse(body);
-    const definition = options.workflowType === "STRUCTURED_CONTENT_DEMO" ? structuredContentWorkflow : demoContentWorkflow;
+    const definition = options.workflowType === "STRUCTURED_CONTENT_DEMO" ? structuredContentWorkflow : options.workflowType === "FULL_CONTENT_ANALYSIS" ? fullContentAnalysisWorkflow : demoContentWorkflow;
     const result = options.async ? await workflowRuntime.engine.startWorkflow(taskId, definition) : await workflowRuntime.engine.runWorkflow(taskId, definition);
     return NextResponse.json(result);
   } catch (error) {

@@ -1,4 +1,5 @@
 import type { LLMProvider } from "@/src/ai/llm/llm-types";
+import type { LLMUsage } from "@/src/ai/llm/llm-types";
 import type { TaskStatus, WorkflowRunStatus, WorkflowStepStatus } from "@/src/db/schema";
 
 export type { TaskStatus, WorkflowRunStatus, WorkflowStepStatus };
@@ -17,6 +18,8 @@ export type WorkflowContext = {
   input: WorkflowInput;
   previousStepOutputs: Record<string, unknown>;
   signal: AbortSignal;
+  workflowStepId?: string;
+  recordUsage?: (usage: { usage: LLMUsage | null; model: string; latencyMs: number }) => Promise<void>;
 };
 
 export type WorkflowStepHandler = {

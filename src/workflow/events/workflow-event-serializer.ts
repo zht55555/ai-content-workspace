@@ -14,7 +14,7 @@ export function serializeWorkflowEvent(event: WorkflowEvent): string {
       case "workflow.started":
         return JSON.stringify({ ...commonFields(event), eventType: event.eventType, workflowType: event.workflowType });
       case "workflow.completed":
-        return JSON.stringify({ ...commonFields(event), eventType: event.eventType });
+        return JSON.stringify({ ...commonFields(event), eventType: event.eventType, ...(event.resultAvailable ? { resultAvailable: true } : {}) });
       case "workflow.failed":
         return JSON.stringify({ ...commonFields(event), eventType: event.eventType, error: event.error });
       case "workflow.cancelled":

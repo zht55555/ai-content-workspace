@@ -1,6 +1,6 @@
 import { LLMProviderError } from "../llm-errors";
 import { DEFAULT_MAX_TOKENS, DEFAULT_MODEL, DEFAULT_TEMPERATURE, normalizeFinishReason, normalizeMessages, normalizeUsage, parseJsonContent } from "../llm-utils";
-import type { GenerateRequest, GenerateResult, LLMProvider, StreamChunk, StructuredGenerateRequest } from "../llm-types";
+import type { GenerateRequest, GenerateResult, LLMProvider, StreamChunk, StructuredGenerateRequest, StructuredGenerateResult } from "../llm-types";
 
 type DeepSeekProviderOptions = {
   apiKey: string;
@@ -37,6 +37,7 @@ export class DeepSeekProvider implements LLMProvider {
         totalTokens: response.usage?.total_tokens,
       }),
       model: response.model ?? this.options.model,
+      usageAvailable: Boolean(response.usage),
     };
   }
 
@@ -61,9 +62,13 @@ export class DeepSeekProvider implements LLMProvider {
   }
 
   async generateStructured(request: StructuredGenerateRequest): Promise<unknown> {
+    return (await this.generateStructuredWithUsage(request)).output;
+  }
+
+  async generateStructuredWithUsage(request: StructuredGenerateRequest): Promise<StructuredGenerateResult> {
     const result = await this.generate({ ...request, systemPrompt: `${request.systemPrompt ?? ""}\nReturn only valid JSON.`.trim() });
     try {
-      return parseJsonContent(result.content, this.name);
+      return { output: parseJsonContent(result.content, this.name), usage: result.usageAvailable === false ? null : result.usage, model: result.model };
     } catch (cause) {
       throw new LLMProviderError("LLM_INVALID_RESPONSE", "DeepSeek returned invalid structured JSON.", this.name, false, { cause });
     }

@@ -28,7 +28,10 @@ export type GenerateResult = {
   finishReason: LLMFinishReason;
   usage: LLMUsage;
   model: string;
+  usageAvailable?: boolean;
 };
+
+export type StructuredGenerateResult = { output: unknown; usage: LLMUsage | null; model: string };
 
 export type StreamChunk = {
   delta: string;
@@ -48,4 +51,5 @@ export interface LLMProvider {
   generate(request: GenerateRequest): Promise<GenerateResult>;
   stream(request: GenerateRequest): AsyncIterable<StreamChunk>;
   generateStructured(request: StructuredGenerateRequest): Promise<unknown>;
+  generateStructuredWithUsage?(request: StructuredGenerateRequest): Promise<StructuredGenerateResult>;
 }

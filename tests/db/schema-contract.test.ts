@@ -30,4 +30,13 @@ describe("database schema contract", () => {
       "SKIPPED",
     ]);
   });
+
+  it("exposes result versioning and nullable usage fields", () => {
+    expect(schema.analysisResults.resultType).toBeDefined();
+    expect(schema.analysisResults.schemaVersion).toBeDefined();
+    expect(schema.llmUsages.taskId).toBeDefined();
+    expect(schema.llmUsages.inputTokens.notNull).toBe(false);
+    expect(schema.llmUsages.outputTokens.notNull).toBe(false);
+    expect(schema.llmUsages.totalTokens.notNull).toBe(false);
+  });
 });

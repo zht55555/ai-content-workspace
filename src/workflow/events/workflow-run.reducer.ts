@@ -4,6 +4,7 @@ export type WorkflowRunSnapshot = {
   id: string;
   taskId: string;
   status: "PENDING" | "QUEUED" | "RUNNING" | "COMPLETED" | "FAILED" | "CANCELLED";
+  resultAvailable?: boolean;
   error?: string | null;
   steps: Array<{
     id: string;
@@ -21,7 +22,7 @@ export type WorkflowRunSnapshot = {
 export function reduceWorkflowRunEvent(snapshot: WorkflowRunSnapshot, event: WorkflowEvent): WorkflowRunSnapshot {
   if (event.workflowRunId !== snapshot.id) return snapshot;
 
-  if (event.eventType === "workflow.completed") return { ...snapshot, status: "COMPLETED" };
+  if (event.eventType === "workflow.completed") return { ...snapshot, status: "COMPLETED", resultAvailable: event.resultAvailable ?? snapshot.resultAvailable };
   if (event.eventType === "workflow.failed") return { ...snapshot, status: "FAILED", error: event.error.message };
   if (event.eventType === "workflow.cancelled") return { ...snapshot, status: "CANCELLED", error: event.reason ?? null };
   if (!event.eventType.startsWith("workflow.step.")) return snapshot;
