@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build the runnable Next.js project skeleton and PostgreSQL/Prisma persistence foundation without implementing the Task API or AI Workflow yet.
+**Goal:** Build the runnable Next.js project skeleton and PostgreSQL/Drizzle persistence foundation without implementing the Task API or AI Workflow yet.
 
-**Architecture:** Use a modular Next.js application with clear `src/db`, `src/tasks`, `src/workflow`, `src/ai`, `src/tools`, and `src/events` boundaries. Phase 1 creates the shared configuration, database schema, generated types, and Demo User seed that later phases will consume.
+**Architecture:** Use a modular Next.js application with clear `src/db`, `src/tasks`, `src/workflow`, `src/ai`, `src/tools`, and `src/events` boundaries. Phase 1 creates the shared configuration, Drizzle database schema, SQL migrations, generated types, and Demo User seed that later phases will consume.
 
-**Tech Stack:** Next.js, React, TypeScript strict, Tailwind CSS, Prisma, PostgreSQL, Zod, Vitest.
+**Tech Stack:** Next.js, React, TypeScript strict, Tailwind CSS, Drizzle ORM, Drizzle Kit, PostgreSQL, Zod, Vitest.
 
 **Spec:** `docs/superpowers/specs/2026-08-30-ai-content-workflow-design.md`
 
@@ -39,7 +39,7 @@
 
 - [ ] **Step 1: Add the minimal project manifest and scripts**
 
-Define scripts for `dev`, `build`, `start`, `lint`, `typecheck`, `test`, `test:watch`, `db:generate`, `db:migrate`, and `db:seed`. Add only dependencies required by the approved architecture: Next.js, React, Prisma client, Zod, Tailwind tooling, and Vitest.
+Define scripts for `dev`, `build`, `start`, `lint`, `typecheck`, `test`, `test:watch`, `db:generate`, `db:migrate`, and `db:seed`. Add only dependencies required by the approved architecture: Next.js, React, Drizzle ORM, Drizzle Kit, `pg`, Zod, Tailwind tooling, and Vitest.
 
 - [ ] **Step 2: Add the minimal root layout and placeholder page**
 
@@ -72,21 +72,22 @@ git add package.json tsconfig.json next.config.ts next-env.d.ts app src/lib/env.
 git commit -m "chore: initialize ai content workflow app"
 ```
 
-### Task 2: Add Prisma schema and persistence client
+### Task 2: Add Drizzle schema and persistence client
 
 **Files:**
-- Create: `prisma/schema.prisma`
+- Create: `src/db/schema.ts`
+- Create: `drizzle.config.ts`
 - Create: `src/db/client.ts`
 - Create: `src/db/types.ts`
 - Modify: `package.json`
 
 **Interfaces:**
-- Produces Prisma models for `User`, `Task`, `TaskInput`, `WorkflowRun`, `WorkflowStep`, `AnalysisResult`, `PromptTemplate`, and `LLMUsage`.
-- Produces a singleton Prisma client exported from `src/db/client.ts`.
+- Produces Drizzle table definitions for `User`, `Task`, `TaskInput`, `WorkflowRun`, `WorkflowStep`, `AnalysisResult`, `PromptTemplate`, and `LLMUsage`.
+- Produces a singleton Drizzle client exported from `src/db/client.ts`.
 
 - [ ] **Step 1: Write the schema contract test**
 
-Add a test that checks the generated Prisma client exposes all eight required model delegates and that the enum values include the approved Task and WorkflowStep states.
+Add a test that checks the Drizzle schema exports all eight required tables and that the enum definitions include the approved Task and WorkflowStep states.
 
 - [ ] **Step 2: Run the test before implementation**
 
@@ -96,26 +97,26 @@ Run:
 npm test -- tests/db/schema-contract.test.ts
 ```
 
-Expected: FAIL because the Prisma schema and generated client do not exist yet.
+Expected: FAIL because the Drizzle schema and client do not exist yet.
 
-- [ ] **Step 3: Define the Prisma schema**
+- [ ] **Step 3: Define the Drizzle schema**
 
-Implement the approved relations and enums. Use JSON columns for structured step inputs, step outputs, and final results. Add indexes for `Task.userId`, `Task.updatedAt`, `WorkflowRun.taskId`, and `WorkflowStep.workflowRunId`. Add unique constraints for `(workflowRunId, stepKey)` and `(promptKey, version)`.
+Implement the approved relations and enums in `src/db/schema.ts`. Use PostgreSQL JSONB columns for structured step inputs, step outputs, and final results. Add indexes for `Task.userId`, `Task.updatedAt`, `WorkflowRun.taskId`, and `WorkflowStep.workflowRunId`. Add unique constraints for `(workflowRunId, stepKey)` and `(promptKey, version)`.
 
-- [ ] **Step 4: Implement the Prisma client singleton**
+- [ ] **Step 4: Implement the Drizzle client singleton**
 
-Export one `PrismaClient` instance in development-safe fashion so hot reload does not create unbounded connections. Keep this module free of Task or Workflow behavior.
+Export one Drizzle client backed by `pg` in development-safe fashion so hot reload does not create unbounded connections. Keep this module free of Task or Workflow behavior.
 
 - [ ] **Step 5: Add domain-facing database types**
 
-Export type aliases that reference Prisma-generated enums and JSON-compatible values without duplicating database enum strings in unrelated modules.
+Export type aliases inferred from Drizzle table definitions and JSON-compatible values without duplicating database enum strings in unrelated modules.
 
 - [ ] **Step 6: Generate and run the contract test**
 
 Run:
 
 ```text
-npx prisma generate
+npx drizzle-kit check
 npm test -- tests/db/schema-contract.test.ts
 npm run typecheck
 ```
@@ -125,16 +126,16 @@ Expected: the test passes and the generated client typechecks.
 - [ ] **Step 7: Commit the persistence foundation**
 
 ```text
-git add prisma src/db package.json package-lock.json tests/db/schema-contract.test.ts
-git commit -m "feat: add prisma persistence foundation"
+git add src/db drizzle.config.ts package.json package-lock.json tests/db/schema-contract.test.ts
+git commit -m "feat: add drizzle persistence foundation"
 ```
 
 ### Task 3: Add database configuration, migration, and Demo User seed
 
 **Files:**
 - Create: `.env.example`
-- Create: `prisma/seed.ts`
-- Create: `prisma/migrations/20260830120000_init/migration.sql`
+- Create: `src/db/seed.ts`
+- Create: `drizzle/0000_init.sql`
 - Modify: `package.json`
 - Modify: `README.md`
 
@@ -162,14 +163,15 @@ Expected: FAIL because the seed and migration are not available.
 
 - [ ] **Step 4: Implement an idempotent seed**
 
-Use an upsert keyed by the stable Demo User email. The seed must be safe to run repeatedly and must not delete user-created records.
+Use an upsert keyed by the stable Demo User email through Drizzle. The seed must be safe to run repeatedly and must not delete user-created records.
 
 - [ ] **Step 5: Create and apply the initial migration**
 
 Run:
 
 ```text
-npx prisma migrate dev --name init
+npm run db:generate
+npm run db:migrate
 npm run db:seed
 ```
 
@@ -184,7 +186,7 @@ Document PostgreSQL startup, environment file creation, migration, seed, develop
 Run:
 
 ```text
-npx prisma migrate status
+npx drizzle-kit check
 npm test -- tests/db/seed.test.ts
 npm run typecheck
 npm run lint
@@ -195,7 +197,7 @@ Expected: migration status is up to date and all checks pass.
 - [ ] **Step 8: Commit the database initialization**
 
 ```text
-git add .env.example prisma README.md package.json package-lock.json tests/db/seed.test.ts
+git add .env.example drizzle src/db README.md package.json package-lock.json tests/db/seed.test.ts
 git commit -m "feat: add database migration and demo user seed"
 ```
 

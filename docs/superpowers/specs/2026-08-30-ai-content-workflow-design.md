@@ -9,7 +9,7 @@ AI Content Workflow 是一个面向短视频内容生产的 AI Workflow 工作�
 ## 2. 已确认的产品约束
 
 - 采用模块化单体架构与持久运行的 Node.js 进程，不拆微服务。
-- 使用 PostgreSQL 与 Prisma。
+- 使用 PostgreSQL 与 Drizzle ORM/Drizzle Kit。
 - 使用 Demo User，不实现登录注册，但所有任务保留 `userId` 关联。
 - 实现 Demo Provider 与一个真实 LLM Provider；其他 Provider 只保留扩展接口。
 - 无 API Key 时必须可以本地完整演示。
@@ -35,7 +35,7 @@ Next.js Route Handlers
     ├── Tool Registry
     └── Event Publisher
             │
-            ├── PostgreSQL / Prisma
+            ├── PostgreSQL / Drizzle
             └── Demo or Real LLM Provider
 ```
 
@@ -47,7 +47,7 @@ Workflow 运行在持久 Node.js 进程中。数据库是 Task、WorkflowRun、W
 - **Workflow**：编排固定 Step、记录状态、执行重试与限制；通过 Provider、Tool、Persistence 和 Event 接口协作。
 - **LLM Provider**：提供 `generate`、`stream`、`generateStructured`、`toolCall` 统一接口；业务 Workflow 不感知具体模型。
 - **Prompt**：维护 Prompt ID、版本、System Prompt、输入/输出 Schema 元数据；不负责执行模型调用。
-- **Persistence**：封装 Prisma Client、Repository 和事务；业务模块不直接散落 Prisma 查询。
+- **Persistence**：封装 Drizzle Client、Schema、Repository 和事务；业务模块不直接散落数据库查询。
 - **SSE/Event**：定义事件类型、事件载荷和发布/订阅机制；不包含业务分析逻辑。
 - **Tool**：以 Registry 管理 `normalize_text` 和 `extract_keywords`，每个 Tool 都有输入输出 Schema。
 - **UI**：消费 Task API 与 SSE 事件，管理展示状态；不承担 Workflow 决策。
@@ -56,7 +56,7 @@ Workflow 运行在持久 Node.js 进程中。数据库是 Task、WorkflowRun、W
 
 Provider Factory 根据环境变量选择真实 Provider；没有可用真实配置时选择 Demo Provider。Demo Provider 返回稳定、可重复且满足 Schema 的结果，并模拟合理的节点进度和 Token 统计，以便完整演示。
 
-第一版实现一个真实 Provider，优先使用 OpenAI-compatible API，具体 Provider 通过配置选择。OpenAI、Claude、DeepSeek、Gemini、Qwen 的接口形态统一保留，但未实现的 Provider 不应伪装为可用。
+第一版实现一个真实 Provider，确定使用 DeepSeek；具体 API 调用放在后续 Phase 3。OpenAI、Claude、Gemini、Qwen 的接口形态统一保留，但未实现的 Provider 不应伪装为可用。
 
 ## 4. 数据模型
 
@@ -158,9 +158,10 @@ src/ai/providers/            Provider 接口、实现、Factory
 src/ai/prompts/              Prompt 定义
 src/ai/schemas/              Zod 与领域类型
 src/tools/                   Tool 接口、Registry、实现
-src/db/                      Prisma Client 与 Persistence
+src/db/                      Drizzle Schema、Client 与 Persistence
 components/                  UI 组件
-prisma/                      Schema 与 Seed
+drizzle/                     SQL Migration 文件
+src/db/seed.ts               Demo User Seed
 tests/                       领域、Provider、Workflow、Tool 测试
 ```
 
