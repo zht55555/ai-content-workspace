@@ -166,4 +166,10 @@ GET  /workflow-runs/:runId
 
 详情页先读取 Snapshot，再通过 EventSource 接收后续事件。Snapshot 是最终状态的来源，SSE 只负责实时更新；已结束的 Run 不会保持长连接。SSE 使用标准事件名、事件 ID、JSON 数据和 20 秒 heartbeat，连接关闭时会清理订阅与定时器。
 
+## Phase 8 Workspace UI
+
+首页 `/` 是 AI Content Workspace 的空态与新建任务入口；打开任务后使用 `/tasks/:taskId` 作为唯一持久 URL。工作台采用桌面端三栏布局：左侧是 Task History，中间是任务详情与 `FULL_CONTENT_ANALYSIS` 七步 Timeline，右侧通过 `GET /api/tasks/:taskId/results/latest` 展示正式 AnalysisResult。
+
+工作台先读取 Workflow Snapshot，再复用现有 SSE Hook 和 Reducer 接收增量事件。Workflow 完成后才请求 Result API，前端不会从 Step Output 或 SSE payload 拼装最终结果。失败任务使用现有 `POST /api/tasks/:taskId/run` 重新启动，旧 WorkflowRun 保留。默认使用 DemoProvider，不需要配置真实模型密钥即可本地演示。
+
 本地调试异步事件时可设置 `DEMO_DELAY_MS=500`，让 DemoProvider 延迟返回，便于观察 Step Timeline。Phase 6 不新增数据库表或 Migration，也不实现 Event Store、跨进程广播、登录和真实 LLM 调用。

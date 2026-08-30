@@ -1,0 +1,8 @@
+import React from "react";
+import type { TaskView } from "@/src/modules/task/task.types";
+import { formatDate, getTaskTypeLabel, getTaskStatusLabel } from "./workspace-utils";
+import { TaskStatusBadge } from "./task-status-badge";
+
+export function TaskDetailHeader({ task, onRun, disabled }: { task: TaskView; onRun: () => void; disabled: boolean }) {
+  return <header className="border-b px-5 py-5"><div className="flex items-start justify-between gap-4"><div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wider text-slate-400">{getTaskTypeLabel(task.type)}</p><h1 className="mt-1 truncate text-xl font-semibold text-slate-900">{task.title}</h1><p className="mt-2 text-xs text-slate-500">创建于 {formatDate(task.createdAt)}</p></div><TaskStatusBadge status={task.status} /></div>{task.status === "RUNNING" && <p className="mt-4 rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-700">AI 分析中，请稍候。</p>}{task.status === "COMPLETED" && <p className="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">分析完成，结果已准备好。</p>}{task.status === "FAILED" && <div className="mt-4 flex items-center justify-between gap-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"><span>执行失败：{task.lastError ?? "Workflow 执行失败"}</span><button className="rounded-md border border-red-200 bg-white px-3 py-1 text-xs font-medium" disabled={disabled} onClick={onRun} type="button">重新分析</button></div>}{task.status === "DRAFT" && <button className="mt-4 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50" disabled={disabled} onClick={onRun} type="button">开始 AI 分析</button>}<p className="sr-only">当前状态：{getTaskStatusLabel(task.status)}</p></header>;
+}

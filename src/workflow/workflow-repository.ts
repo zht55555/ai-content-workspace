@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 
 import { db } from "@/src/db/client";
 import * as schema from "@/src/db/schema";
@@ -49,5 +49,10 @@ export class WorkflowRepository {
       .where(and(eq(schema.workflowRuns.id, runId), eq(schema.tasks.userId, userId)));
     if (!ownedRun[0]) return undefined;
     return this.findRun(runId);
+  }
+
+  async findLatestRunForTask(taskId: string) {
+    const [run] = await this.database.select().from(schema.workflowRuns).where(eq(schema.workflowRuns.taskId, taskId)).orderBy(desc(schema.workflowRuns.createdAt)).limit(1);
+    return run;
   }
 }

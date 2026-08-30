@@ -57,6 +57,13 @@ export class WorkflowEngine {
     return { ...result.run, output: result.run.outputJson, error: result.run.errorMessage, resultAvailable: Boolean(analysisResult), steps: result.steps };
   }
 
+  async getLatestRunForTask(taskId: string, userId?: string) {
+    const task = await this.taskRepository.findById(taskId);
+    if (!task || (userId && task.task.userId !== userId)) throw new WorkflowError("WORKFLOW_NOT_FOUND", "WorkflowRun was not found.");
+    const run = await this.workflowRepository.findLatestRunForTask(taskId);
+    return run ? this.getRun(run.id, userId) : null;
+  }
+
   private async prepareRun(taskId: string, definition: WorkflowDefinition): Promise<{ task: WorkflowTask; created: CreatedWorkflow }> {
     if (definition.steps.length === 0 || definition.steps.length > MAX_STEPS) throw new WorkflowError("WORKFLOW_DEFINITION_NOT_FOUND", "Workflow definition has an invalid number of steps.");
     const task = await this.taskRepository.findById(taskId);
