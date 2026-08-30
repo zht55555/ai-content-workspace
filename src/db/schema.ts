@@ -21,6 +21,7 @@ export const taskStatusEnum = pgEnum("task_status", [
 ]);
 
 export const workflowRunStatusEnum = pgEnum("workflow_run_status", [
+  "PENDING",
   "QUEUED",
   "RUNNING",
   "COMPLETED",
@@ -78,7 +79,10 @@ export const workflowRuns = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     taskId: uuid("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+    workflowType: text("workflow_type").default("DEMO_CONTENT_WORKFLOW").notNull(),
     status: workflowRunStatusEnum("status").default("QUEUED").notNull(),
+    inputJson: jsonb("input_json"),
+    outputJson: jsonb("output_json"),
     currentStep: text("current_step"),
     retryCount: integer("retry_count").default(0).notNull(),
     totalTokens: integer("total_tokens").default(0).notNull(),
@@ -99,6 +103,8 @@ export const workflowSteps = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     workflowRunId: uuid("workflow_run_id").notNull().references(() => workflowRuns.id, { onDelete: "cascade" }),
     stepKey: text("step_key").notNull(),
+    stepType: text("step_type").notNull(),
+    title: text("title").notNull(),
     stepOrder: integer("step_order").notNull(),
     status: workflowStepStatusEnum("status").default("PENDING").notNull(),
     inputJson: jsonb("input_json"),
@@ -162,3 +168,5 @@ export type Task = typeof tasks.$inferSelect;
 export type NewTask = typeof tasks.$inferInsert;
 export type WorkflowStep = typeof workflowSteps.$inferSelect;
 export type TaskStatus = (typeof taskStatusEnum.enumValues)[number];
+export type WorkflowRunStatus = (typeof workflowRunStatusEnum.enumValues)[number];
+export type WorkflowStepStatus = (typeof workflowStepStatusEnum.enumValues)[number];

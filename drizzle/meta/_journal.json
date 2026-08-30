@@ -15,6 +15,13 @@
       "when": 1788074152054,
       "tag": "0001_tired_radioactive_man",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788075695165,
+      "tag": "0002_same_zuras",
+      "breakpoints": true
     }
   ]
 }

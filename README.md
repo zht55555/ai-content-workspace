@@ -87,6 +87,8 @@ GET    /api/tasks                 分页查询，可按 status/type 筛选
 GET    /api/tasks/:taskId         查询 Task 详情
 PATCH  /api/tasks/:taskId         更新 title 或 status
 DELETE /api/tasks/:taskId         删除 Task 及其 TaskInput
+POST   /api/tasks/:taskId/run     启动 Demo Content Workflow
+GET    /api/workflow-runs/:runId  查询 WorkflowRun 与 Steps
 ```
 
 创建请求示例：
@@ -115,3 +117,5 @@ DEEPSEEK_MODEL=deepseek-chat
 ```
 
 Phase 3 不会自动调用真实模型；只有显式调用 Provider 时才会发送请求。
+
+Phase 4 使用 `DEMO_CONTENT_WORKFLOW` 验证三步顺序执行、状态持久化、Retry 和 Task 状态联动；本阶段不包含 SSE 或工作台 UI。
