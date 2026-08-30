@@ -76,3 +76,29 @@ npm test -- tests/db/seed.test.ts
 ## 后续 DeepSeek 配置
 
 Phase 1 不调用大模型。后续接入阶段将使用 `LLM_PROVIDER=deepseek`、`DEEPSEEK_API_KEY` 和 `DEEPSEEK_MODEL`；当前这些变量只作为环境配置预留。
+
+## Task API
+
+Phase 2 已提供 Task 基础管理接口，所有任务自动绑定 Seed 创建的 Demo User。
+
+```text
+POST   /api/tasks                 创建 Task 与 TaskInput
+GET    /api/tasks                 分页查询，可按 status/type 筛选
+GET    /api/tasks/:taskId         查询 Task 详情
+PATCH  /api/tasks/:taskId         更新 title 或 status
+DELETE /api/tasks/:taskId         删除 Task 及其 TaskInput
+```
+
+创建请求示例：
+
+```json
+{
+  "title": "分析这条短视频逐字稿",
+  "type": "TRANSCRIPT_ANALYSIS",
+  "input": {
+    "inputType": "TRANSCRIPT",
+    "content": "这里是一段短视频逐字稿...",
+    "metadata": { "language": "zh-CN" }
+  }
+}
+```

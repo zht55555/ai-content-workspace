@@ -68,6 +68,7 @@ export const taskInputs = pgTable("task_inputs", {
   rawContent: text("raw_content").notNull(),
   normalizedContent: text("normalized_content"),
   contentType: contentTypeEnum("content_type").notNull(),
+  metadata: jsonb("metadata").default({}).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -160,3 +161,4 @@ export type NewUser = typeof users.$inferInsert;
 export type Task = typeof tasks.$inferSelect;
 export type NewTask = typeof tasks.$inferInsert;
 export type WorkflowStep = typeof workflowSteps.$inferSelect;
+export type TaskStatus = (typeof taskStatusEnum.enumValues)[number];
