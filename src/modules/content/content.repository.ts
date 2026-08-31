@@ -3,6 +3,7 @@ import { and, count, desc, eq, ilike, or } from "drizzle-orm";
 import { db } from "@/src/db/client";
 import * as schema from "@/src/db/schema";
 import type { TaskDb } from "@/src/modules/task/task.repository";
+import { ContentError, StaleVersionError } from "./content.errors";
 import type { ContentPlatform } from "./content.types";
 
 export class ContentRepository {
@@ -121,6 +122,37 @@ export class ContentVersionRepository {
   async findCurrentForContent(contentItemId: string, versionId: string | null) {
     if (!versionId) return undefined;
     return this.findByIdForContent(contentItemId, versionId);
+  }
+
+  async createHumanEdit(input: { contentItemId: string; baseVersionId: string; createdBy: string; payload: unknown }) {
+    return this.database.transaction(async (transaction) => {
+      const [content] = await transaction.select({ id: schema.contentItems.id, currentVersionId: schema.contentItems.currentVersionId }).from(schema.contentItems).where(eq(schema.contentItems.id, input.contentItemId));
+      if (!content) throw new ContentError("CONTENT_NOT_FOUND", "ContentItem was not found.");
+
+      const [baseVersion] = await transaction.select({ id: schema.contentVersions.id }).from(schema.contentVersions).where(and(eq(schema.contentVersions.id, input.baseVersionId), eq(schema.contentVersions.contentItemId, input.contentItemId)));
+      if (!baseVersion) throw new ContentError("CONTENT_NOT_FOUND", "Content version was not found for this ContentItem.");
+      if (content.currentVersionId !== input.baseVersionId) throw new StaleVersionError();
+
+      const [latest] = await transaction.select({ versionNumber: schema.contentVersions.versionNumber }).from(schema.contentVersions).where(eq(schema.contentVersions.contentItemId, input.contentItemId)).orderBy(desc(schema.contentVersions.versionNumber)).limit(1);
+      const [version] = await transaction.insert(schema.contentVersions).values({
+        contentItemId: input.contentItemId,
+        versionNumber: (latest?.versionNumber ?? 0) + 1,
+        source: "HUMAN_EDIT",
+        createdBy: input.createdBy,
+        baseVersionId: input.baseVersionId,
+        contentJson: input.payload,
+      }).returning();
+      if (!version) throw new Error("Human-edit ContentVersion creation failed.");
+
+      const [updatedContent] = await transaction.update(schema.contentItems).set({ currentVersionId: version.id, updatedAt: new Date() }).where(and(eq(schema.contentItems.id, input.contentItemId), eq(schema.contentItems.currentVersionId, input.baseVersionId))).returning();
+      if (!updatedContent) throw new StaleVersionError();
+
+      return version;
+    });
+  }
+
+  async listVersions(contentItemId: string) {
+    return this.database.select().from(schema.contentVersions).where(eq(schema.contentVersions.contentItemId, contentItemId)).orderBy(desc(schema.contentVersions.versionNumber), desc(schema.contentVersions.createdAt));
   }
 
   async insert(input: { contentItemId: string; versionNumber: number; source: schema.ContentVersionSource; createdBy: string; baseVersionId?: string; workflowRunId?: string; analysisResultId?: string; contentJson: unknown }) {
