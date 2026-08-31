@@ -56,3 +56,4 @@ test-results/
 # Local Codex/work artifacts
 work/
 outputs/
+.worktrees/
