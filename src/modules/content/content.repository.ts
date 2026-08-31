@@ -126,7 +126,7 @@ export class ContentVersionRepository {
 
   async createHumanEdit(input: { contentItemId: string; baseVersionId: string; createdBy: string; payload: unknown }) {
     return this.database.transaction(async (transaction) => {
-      const [content] = await transaction.select({ id: schema.contentItems.id, currentVersionId: schema.contentItems.currentVersionId }).from(schema.contentItems).where(eq(schema.contentItems.id, input.contentItemId));
+      const [content] = await transaction.select({ id: schema.contentItems.id, currentVersionId: schema.contentItems.currentVersionId }).from(schema.contentItems).where(eq(schema.contentItems.id, input.contentItemId)).for("update");
       if (!content) throw new ContentError("CONTENT_NOT_FOUND", "ContentItem was not found.");
 
       const [baseVersion] = await transaction.select({ id: schema.contentVersions.id }).from(schema.contentVersions).where(and(eq(schema.contentVersions.id, input.baseVersionId), eq(schema.contentVersions.contentItemId, input.contentItemId)));
