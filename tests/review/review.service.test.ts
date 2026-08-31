@@ -43,4 +43,35 @@ describe("ReviewService", () => {
 
     await expect(service.createReview({ contentItemId: "11111111-1111-4111-8111-111111111111", contentVersionId: "22222222-2222-4222-8222-222222222222", reviewerId: "33333333-3333-4333-8333-333333333333", decision: "APPROVED" })).rejects.toMatchObject({ name: "NonCurrentReviewTargetError", code: "NON_CURRENT_REVIEW_TARGET" });
   });
+
+  it("applies approval to the current version and records finalization", async () => {
+    const repository = {
+      findVersion: async () => ({ id: "22222222-2222-4222-8222-222222222222", contentItemId: "11111111-1111-4111-8111-111111111111" }),
+      findCurrentVersionId: async () => "22222222-2222-4222-8222-222222222222",
+      applyDecision: async (input: Record<string, unknown>) => ({ id: "review-1", ...input }),
+    };
+    const service = new ReviewService(repository as never);
+
+    const result = await service.createReview({ contentItemId: "11111111-1111-4111-8111-111111111111", contentVersionId: "22222222-2222-4222-8222-222222222222", reviewerId: "33333333-3333-4333-8333-333333333333", decision: "APPROVED", note: "通过" });
+
+    expect(result).toMatchObject({ decision: "APPROVED", note: "通过" });
+  });
+
+  it.each(["NEEDS_REVISION", "REJECTED"] as const)("records %s without changing the version pointer", async (decision) => {
+    const repository = {
+      findVersion: async () => ({ id: "22222222-2222-4222-8222-222222222222", contentItemId: "11111111-1111-4111-8111-111111111111" }),
+      findCurrentVersionId: async () => "22222222-2222-4222-8222-222222222222",
+      applyDecision: async (input: Record<string, unknown>) => ({ id: "review-1", ...input }),
+    };
+    const service = new ReviewService(repository as never);
+
+    await expect(service.createReview({ contentItemId: "11111111-1111-4111-8111-111111111111", contentVersionId: "22222222-2222-4222-8222-222222222222", reviewerId: "33333333-3333-4333-8333-333333333333", decision, note: "备注" })).resolves.toMatchObject({ decision, note: "备注" });
+  });
+
+  it("lists review history newest first", async () => {
+    const repository = { listForContent: async () => [{ id: "review-2" }, { id: "review-1" }] };
+    const service = new ReviewService(repository as never);
+
+    await expect(service.listReviews("11111111-1111-4111-8111-111111111111")).resolves.toEqual([{ id: "review-2" }, { id: "review-1" }]);
+  });
 });
