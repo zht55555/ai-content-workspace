@@ -27,4 +27,15 @@ describe("task request schemas", () => {
     expect(updateTaskSchema.parse({ title: "新标题" })).toEqual({ title: "新标题" });
     expect(() => updateTaskSchema.parse({ userId: "not-allowed" })).toThrow();
   });
+
+  it("accepts an optional ContentItem association", () => {
+    const result = createTaskInputSchema.parse({
+      title: "关联内容",
+      type: "COPY_ANALYSIS",
+      contentItemId: "11111111-1111-4111-8111-111111111111",
+      input: { inputType: "COPY", content: "文案" },
+    });
+
+    expect(result.contentItemId).toBe("11111111-1111-4111-8111-111111111111");
+  });
 });

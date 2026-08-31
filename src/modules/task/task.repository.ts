@@ -25,10 +25,10 @@ export class TaskRepository {
     return result[0];
   }
 
-  async insertTask(database: TaskDb, userId: string, title: string, type: TaskType) {
+  async insertTask(database: TaskDb, userId: string, title: string, type: TaskType, contentItemId?: string) {
     const [task] = await database
       .insert(schema.tasks)
-      .values({ userId, name: title, contentType: typeToContentType[type], status: "DRAFT" })
+      .values({ userId, contentItemId, name: title, contentType: typeToContentType[type], status: "DRAFT" })
       .returning();
     return task;
   }

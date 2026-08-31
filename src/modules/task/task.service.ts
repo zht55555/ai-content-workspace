@@ -15,6 +15,7 @@ function toTaskView(row: NonNullable<Awaited<ReturnType<TaskRepository["findById
   return {
     id: row.task.id,
     userId: row.task.userId,
+    contentItemId: row.task.contentItemId,
     title: row.task.name,
     type: `${row.task.contentType}_ANALYSIS` as TaskType,
     status: row.task.status,
@@ -48,7 +49,7 @@ export class TaskService {
     if (!demoUser) throw new Error("Demo User is not seeded.");
 
     const taskId = await db.transaction(async (transaction) => {
-      const task = await this.repository.insertTask(transaction, demoUser.id, data.title, data.type);
+      const task = await this.repository.insertTask(transaction, demoUser.id, data.title, data.type, data.contentItemId);
       if (!task) throw new Error("Task creation failed.");
       await this.repository.insertTaskInput(transaction, task.id, data.input);
       return task.id;

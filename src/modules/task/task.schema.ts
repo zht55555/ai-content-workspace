@@ -12,6 +12,7 @@ export const createTaskInputSchema = z
   .object({
     title: z.string().trim().min(1).max(200),
     type: z.enum(TASK_TYPES),
+    contentItemId: z.string().uuid().optional(),
     input: z.object({
       inputType: z.enum(["TRANSCRIPT", "COPY", "TOPIC"]),
       content: z.string().trim().min(1).max(100_000),

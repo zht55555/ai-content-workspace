@@ -13,6 +13,7 @@ export type UserRecord = InferSelectModel<typeof users>;
 export type TaskView = {
   id: string;
   userId: string;
+  contentItemId: string | null;
   title: string;
   type: TaskType;
   status: TaskStatus;

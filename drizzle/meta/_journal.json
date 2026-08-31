@@ -36,6 +36,13 @@
       "when": 1788091041359,
       "tag": "0004_brown_electro",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788159340441,
+      "tag": "0005_polite_magus",
+      "breakpoints": true
     }
   ]
 }

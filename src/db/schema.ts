@@ -40,6 +40,10 @@ export const workflowStepStatusEnum = pgEnum("workflow_step_status", [
 ]);
 
 export const contentTypeEnum = pgEnum("content_type", ["TRANSCRIPT", "COPY", "TOPIC"]);
+export const contentPlatformEnum = pgEnum("content_platform", ["DOUYIN", "XIAOHONGSHU", "BILIBILI", "WECHAT", "OTHER"]);
+export const contentStatusEnum = pgEnum("content_status", ["DRAFT", "AI_PROCESSING", "WAITING_REVIEW", "NEEDS_REVISION", "APPROVED", "REJECTED", "PUBLISHED", "ARCHIVED"]);
+export const contentVersionSourceEnum = pgEnum("content_version_source", ["ORIGINAL", "AI_GENERATED", "HUMAN_EDIT", "AI_REGENERATED"]);
+export const reviewDecisionEnum = pgEnum("review_decision", ["APPROVED", "NEEDS_REVISION", "REJECTED"]);
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -49,11 +53,32 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const contentItems = pgTable(
+  "content_items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull().references(() => users.id),
+    title: text("title").notNull(),
+    rawContent: text("raw_content").notNull(),
+    source: text("source"),
+    platform: contentPlatformEnum("platform").default("OTHER").notNull(),
+    sourceUrl: text("source_url"),
+    tags: jsonb("tags").default([]).notNull(),
+    status: contentStatusEnum("status").default("DRAFT").notNull(),
+    lastError: text("last_error"),
+    currentVersionId: uuid("current_version_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index("content_items_user_updated_idx").on(table.userId, table.updatedAt), index("content_items_user_status_idx").on(table.userId, table.status), index("content_items_user_platform_idx").on(table.userId, table.platform)],
+);
+
 export const tasks = pgTable(
   "tasks",
   {
     id: uuid("id").defaultRandom().primaryKey(),
     userId: uuid("user_id").notNull().references(() => users.id),
+    contentItemId: uuid("content_item_id").references(() => contentItems.id, { onDelete: "set null" }),
     name: text("name").notNull(),
     status: taskStatusEnum("status").default("DRAFT").notNull(),
     contentType: contentTypeEnum("content_type").notNull(),
@@ -144,6 +169,39 @@ export const analysisResults = pgTable(
   (table) => [unique("analysis_results_workflow_run_unique").on(table.workflowRunId), index("analysis_results_task_created_idx").on(table.taskId, table.createdAt)],
 );
 
+export const contentVersions = pgTable(
+  "content_versions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    contentItemId: uuid("content_item_id").notNull().references(() => contentItems.id, { onDelete: "cascade" }),
+    versionNumber: integer("version_number").notNull(),
+    source: contentVersionSourceEnum("source").notNull(),
+    createdBy: uuid("created_by").notNull().references(() => users.id),
+    baseVersionId: uuid("base_version_id"),
+    workflowRunId: uuid("workflow_run_id").references(() => workflowRuns.id, { onDelete: "set null" }),
+    analysisResultId: uuid("analysis_result_id").references(() => analysisResults.id, { onDelete: "set null" }),
+    contentJson: jsonb("content_json").notNull(),
+    isFinal: boolean("is_final").default(false).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [unique("content_versions_item_number_unique").on(table.contentItemId, table.versionNumber), index("content_versions_item_created_idx").on(table.contentItemId, table.createdAt), uniqueIndex("content_versions_one_final_idx").on(table.contentItemId).where(sql`${table.isFinal} = true`)],
+);
+
+export const reviews = pgTable(
+  "reviews",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    contentItemId: uuid("content_item_id").notNull().references(() => contentItems.id, { onDelete: "cascade" }),
+    contentVersionId: uuid("content_version_id").notNull().references(() => contentVersions.id, { onDelete: "restrict" }),
+    reviewerId: uuid("reviewer_id").notNull().references(() => users.id),
+    decision: reviewDecisionEnum("decision").notNull(),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index("reviews_content_created_idx").on(table.contentItemId, table.createdAt), index("reviews_version_created_idx").on(table.contentVersionId, table.createdAt)],
+);
+
 export const promptTemplates = pgTable(
   "prompt_templates",
   {
@@ -182,3 +240,7 @@ export type WorkflowStep = typeof workflowSteps.$inferSelect;
 export type TaskStatus = (typeof taskStatusEnum.enumValues)[number];
 export type WorkflowRunStatus = (typeof workflowRunStatusEnum.enumValues)[number];
 export type WorkflowStepStatus = (typeof workflowStepStatusEnum.enumValues)[number];
+export type ContentPlatform = (typeof contentPlatformEnum.enumValues)[number];
+export type ContentStatus = (typeof contentStatusEnum.enumValues)[number];
+export type ContentVersionSource = (typeof contentVersionSourceEnum.enumValues)[number];
+export type ReviewDecision = (typeof reviewDecisionEnum.enumValues)[number];

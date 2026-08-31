@@ -39,4 +39,17 @@ describe("database schema contract", () => {
     expect(schema.llmUsages.outputTokens.notNull).toBe(false);
     expect(schema.llmUsages.totalTokens.notNull).toBe(false);
   });
+
+  it("defines the Phase A business domain enums and tables", async () => {
+    const schema = await import("@/src/db/schema");
+
+    expect(schema.contentPlatformEnum.enumValues).toEqual(["DOUYIN", "XIAOHONGSHU", "BILIBILI", "WECHAT", "OTHER"]);
+    expect(schema.contentStatusEnum.enumValues).toEqual(["DRAFT", "AI_PROCESSING", "WAITING_REVIEW", "NEEDS_REVISION", "APPROVED", "REJECTED", "PUBLISHED", "ARCHIVED"]);
+    expect(schema.contentVersionSourceEnum.enumValues).toEqual(["ORIGINAL", "AI_GENERATED", "HUMAN_EDIT", "AI_REGENERATED"]);
+    expect(schema.reviewDecisionEnum.enumValues).toEqual(["APPROVED", "NEEDS_REVISION", "REJECTED"]);
+    expect(schema.contentItems).toBeDefined();
+    expect(schema.contentVersions).toBeDefined();
+    expect(schema.reviews).toBeDefined();
+    expect(schema.tasks.contentItemId).toBeDefined();
+  });
 });
