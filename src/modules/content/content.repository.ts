@@ -6,6 +6,8 @@ import type { TaskDb } from "@/src/modules/task/task.repository";
 import { ContentError, StaleVersionError } from "./content.errors";
 import type { ContentPlatform } from "./content.types";
 
+const CONTENT_VERSIONS_ITEM_NUMBER_UNIQUE = "content_versions_item_number_unique";
+
 export class ContentRepository {
   constructor(private readonly database: TaskDb = db) {}
 
@@ -125,30 +127,35 @@ export class ContentVersionRepository {
   }
 
   async createHumanEdit(input: { contentItemId: string; baseVersionId: string; createdBy: string; payload: unknown }) {
-    return this.database.transaction(async (transaction) => {
-      const [content] = await transaction.select({ id: schema.contentItems.id, currentVersionId: schema.contentItems.currentVersionId }).from(schema.contentItems).where(eq(schema.contentItems.id, input.contentItemId)).for("update");
-      if (!content) throw new ContentError("CONTENT_NOT_FOUND", "ContentItem was not found.");
+    try {
+      return await this.database.transaction(async (transaction) => {
+        const [content] = await transaction.select({ id: schema.contentItems.id, currentVersionId: schema.contentItems.currentVersionId }).from(schema.contentItems).where(eq(schema.contentItems.id, input.contentItemId)).for("update");
+        if (!content) throw new ContentError("CONTENT_NOT_FOUND", "ContentItem was not found.");
 
-      const [baseVersion] = await transaction.select({ id: schema.contentVersions.id }).from(schema.contentVersions).where(and(eq(schema.contentVersions.id, input.baseVersionId), eq(schema.contentVersions.contentItemId, input.contentItemId)));
-      if (!baseVersion) throw new ContentError("CONTENT_NOT_FOUND", "Content version was not found for this ContentItem.");
-      if (content.currentVersionId !== input.baseVersionId) throw new StaleVersionError();
+        const [baseVersion] = await transaction.select({ id: schema.contentVersions.id }).from(schema.contentVersions).where(and(eq(schema.contentVersions.id, input.baseVersionId), eq(schema.contentVersions.contentItemId, input.contentItemId)));
+        if (!baseVersion) throw new ContentError("CONTENT_NOT_FOUND", "Content version was not found for this ContentItem.");
+        if (content.currentVersionId !== input.baseVersionId) throw new StaleVersionError();
 
-      const [latest] = await transaction.select({ versionNumber: schema.contentVersions.versionNumber }).from(schema.contentVersions).where(eq(schema.contentVersions.contentItemId, input.contentItemId)).orderBy(desc(schema.contentVersions.versionNumber)).limit(1);
-      const [version] = await transaction.insert(schema.contentVersions).values({
-        contentItemId: input.contentItemId,
-        versionNumber: (latest?.versionNumber ?? 0) + 1,
-        source: "HUMAN_EDIT",
-        createdBy: input.createdBy,
-        baseVersionId: input.baseVersionId,
-        contentJson: input.payload,
-      }).returning();
-      if (!version) throw new Error("Human-edit ContentVersion creation failed.");
+        const [latest] = await transaction.select({ versionNumber: schema.contentVersions.versionNumber }).from(schema.contentVersions).where(eq(schema.contentVersions.contentItemId, input.contentItemId)).orderBy(desc(schema.contentVersions.versionNumber)).limit(1);
+        const [version] = await transaction.insert(schema.contentVersions).values({
+          contentItemId: input.contentItemId,
+          versionNumber: (latest?.versionNumber ?? 0) + 1,
+          source: "HUMAN_EDIT",
+          createdBy: input.createdBy,
+          baseVersionId: input.baseVersionId,
+          contentJson: input.payload,
+        }).returning();
+        if (!version) throw new Error("Human-edit ContentVersion creation failed.");
 
-      const [updatedContent] = await transaction.update(schema.contentItems).set({ currentVersionId: version.id, updatedAt: new Date() }).where(and(eq(schema.contentItems.id, input.contentItemId), eq(schema.contentItems.currentVersionId, input.baseVersionId))).returning();
-      if (!updatedContent) throw new StaleVersionError();
+        const [updatedContent] = await transaction.update(schema.contentItems).set({ currentVersionId: version.id, updatedAt: new Date() }).where(and(eq(schema.contentItems.id, input.contentItemId), eq(schema.contentItems.currentVersionId, input.baseVersionId))).returning();
+        if (!updatedContent) throw new StaleVersionError();
 
-      return version;
-    });
+        return version;
+      });
+    } catch (error) {
+      if (isContentVersionNumberConflict(error)) throw new StaleVersionError();
+      throw error;
+    }
   }
 
   async listVersions(contentItemId: string) {
@@ -160,4 +167,9 @@ export class ContentVersionRepository {
     if (!version) throw new Error("ContentVersion creation failed.");
     return version;
   }
+}
+
+function isContentVersionNumberConflict(error: unknown): error is { code: string; constraint: string } {
+  if (!error || typeof error !== "object") return false;
+  return "code" in error && error.code === "23505" && "constraint" in error && error.constraint === CONTENT_VERSIONS_ITEM_NUMBER_UNIQUE;
 }
