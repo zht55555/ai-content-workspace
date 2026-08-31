@@ -6,7 +6,7 @@ const content = { id: "content-1", userId: "11111111-1111-4111-8111-111111111111
 
 describe("ContentService", () => {
   it("creates a ContentItem without inventing a deliverable version", async () => {
-    const repository = { insertContent: async () => content };
+    const repository = { findDemoUser: async () => ({ id: "11111111-1111-4111-8111-111111111111" }), createWithOriginalVersion: async () => ({ content, originalVersion: null }) };
     const service = new ContentService(repository as never);
 
     const result = await service.createContent({ userId: "11111111-1111-4111-8111-111111111111", title: "测试内容", rawContent: "原始素材", platform: "DOUYIN" });

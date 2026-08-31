@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ContentDeliverableSchema } from "@/src/modules/content/content.schema";
+import { ContentDeliverableSchema, contentListQuerySchema, updateContentSchema } from "@/src/modules/content/content.schema";
 
 describe("content deliverable schema", () => {
   it("accepts only editable and publishable deliverables", () => {
@@ -27,5 +27,15 @@ describe("content deliverable schema", () => {
       keywords: [],
       analysis: { topic: "不能放入版本" },
     })).toThrow();
+  });
+
+  it("parses URL-driven library filters and pagination", () => {
+    expect(contentListQuerySchema.parse({ search: "  选题  ", platform: "DOUYIN", status: "DRAFT", page: "2", pageSize: "10" })).toEqual({ search: "选题", platform: "DOUYIN", status: "DRAFT", page: 2, pageSize: 10 });
+  });
+
+  it("allows only basic content fields and archive status updates", () => {
+    expect(updateContentSchema.parse({ title: "新标题", rawContent: "新内容", platform: "OTHER", source: "手动", sourceUrl: "https://example.com", tags: ["标签"] })).toMatchObject({ title: "新标题" });
+    expect(updateContentSchema.parse({ status: "ARCHIVED" })).toEqual({ status: "ARCHIVED" });
+    expect(() => updateContentSchema.parse({ status: "APPROVED" })).toThrow();
   });
 });

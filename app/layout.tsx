@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { WorkspaceShell } from "@/src/components/workspace/workspace-shell";
+import { WorkspaceRouteShell } from "@/src/components/workspace/workspace-route-shell";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="zh-CN" suppressHydrationWarning>
-      <body><WorkspaceShell />{children}</body>
+      <body><WorkspaceRouteShell />{children}</body>
     </html>
   );
 }

@@ -1,0 +1,22 @@
+"use client";
+
+import React from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { createContent } from "@/src/lib/api/contents";
+import type { ContentPlatform } from "@/src/modules/content/content.types";
+
+const platforms: Array<[ContentPlatform, string]> = [["DOUYIN", "抖音"], ["XIAOHONGSHU", "小红书"], ["BILIBILI", "B 站"], ["WECHAT", "微信"], ["OTHER", "其他"]];
+
+export function ContentCreateForm({ onCancel }: { onCancel: () => void }) {
+  const router = useRouter();
+  const [form, setForm] = useState({ title: "", rawContent: "", platform: "DOUYIN" as ContentPlatform, source: "", sourceUrl: "", tags: "" });
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  async function submit() {
+    if (!form.title.trim() || !form.rawContent.trim()) { setError("标题和原始内容不能为空。"); return; }
+    setSaving(true); setError(null);
+    try { const content = await createContent({ ...form, title: form.title.trim(), rawContent: form.rawContent.trim(), source: form.source.trim() || undefined, sourceUrl: form.sourceUrl.trim() || undefined, tags: form.tags.split(",").map((tag) => tag.trim()).filter(Boolean) }); router.push(`/contents/${content.id}`); } catch (reason) { setError(reason instanceof Error ? reason.message : "创建内容失败，请重试。"); } finally { setSaving(false); }
+  }
+  return <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_12px_32px_rgba(15,23,42,0.06)]"><div className="flex items-start justify-between border-b border-slate-100 pb-5"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-600">New Content</p><h2 className="mt-2 text-xl font-semibold text-slate-900">创建内容</h2><p className="mt-1 text-sm text-slate-500">手动粘贴素材，先把内容资产集中管理起来。</p></div><button className="text-sm text-slate-400 hover:text-slate-700" onClick={onCancel} type="button">取消</button></div><div className="space-y-4 pt-5"><label className="block text-sm font-medium text-slate-700">标题<input className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-slate-400 focus:ring-4 focus:ring-slate-100" onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="例如：春季新品短视频" value={form.title} /></label><label className="block text-sm font-medium text-slate-700">原始内容<textarea className="mt-2 min-h-44 w-full resize-y rounded-xl border border-slate-200 px-3 py-3 text-sm leading-6 outline-none focus:border-slate-400 focus:ring-4 focus:ring-slate-100" onChange={(e) => setForm({ ...form, rawContent: e.target.value })} placeholder="粘贴逐字稿、文案或选题内容…" value={form.rawContent} /></label><div className="grid gap-4 md:grid-cols-2"><label className="block text-sm font-medium text-slate-700">平台<select className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" onChange={(e) => setForm({ ...form, platform: e.target.value as ContentPlatform })} value={form.platform}>{platforms.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label className="block text-sm font-medium text-slate-700">来源<input className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" onChange={(e) => setForm({ ...form, source: e.target.value })} placeholder="手动粘贴、团队素材…" value={form.source} /></label></div><label className="block text-sm font-medium text-slate-700">来源 URL <span className="font-normal text-slate-400">（可选）</span><input className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" onChange={(e) => setForm({ ...form, sourceUrl: e.target.value })} placeholder="https://…" value={form.sourceUrl} /></label><label className="block text-sm font-medium text-slate-700">标签 <span className="font-normal text-slate-400">（用逗号分隔）</span><input className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" onChange={(e) => setForm({ ...form, tags: e.target.value })} placeholder="新品, 教程, 对标" value={form.tags} /></label>{error && <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">{error}</p>}<button className="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50" disabled={saving} onClick={() => void submit()} type="button">{saving ? "正在保存…" : "保存内容"}</button></div></section>;
+}
