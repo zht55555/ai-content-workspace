@@ -62,7 +62,7 @@ export class ContentProcessingService {
       taskId = await this.database.transaction(async (transaction) => {
         const task = await this.taskRepository.insertTask(transaction, user.id, `AI Processing: ${content.title}`, "TRANSCRIPT_ANALYSIS", content.id);
         if (!task) throw new Error("Task creation failed.");
-        await this.taskRepository.insertTaskInput(transaction, task.id, { inputType: "TRANSCRIPT", content: content.rawContent, metadata: { contentItemId: content.id, processingBeforeStatus: previousStatus } });
+        await this.taskRepository.insertTaskInput(transaction, task.id, { inputType: "TRANSCRIPT", content: content.rawContent, metadata: { contentItemId: content.id, processingBeforeStatus: previousStatus, regenerate: previousStatus === "WAITING_REVIEW" || previousStatus === "NEEDS_REVISION" } });
         const transitioned = await this.contentRepository.transitionToProcessing(content.id, previousStatus, transaction);
         if (!transitioned) throw new ContentError("CONTENT_INVALID_STATE", "ContentItem changed before processing started.");
         return task.id;
@@ -98,7 +98,8 @@ export class ContentProcessingService {
     const content = await this.contentRepository.findById(task.task.contentItemId, task.task.userId);
     if (!content) throw new ContentError("CONTENT_NOT_FOUND", "ContentItem was not found.");
     const result = ContentAnalysisResultSchema.parse(analysisResult.resultJson);
-    await this.contentRepository.finalizeAiGenerated({ contentItemId: content.id, createdBy: task.task.userId, workflowRunId, analysisResultId: analysisResult.id, baseVersionId: content.currentVersionId, contentJson: toContentDeliverable(result) });
+    const metadata = task.input.metadata as Record<string, unknown>;
+    await this.contentRepository.finalizeAiGenerated({ contentItemId: content.id, createdBy: task.task.userId, workflowRunId, analysisResultId: analysisResult.id, baseVersionId: content.currentVersionId, source: metadata.regenerate === true ? "AI_REGENERATED" : "AI_GENERATED", contentJson: toContentDeliverable(result) });
   }
 
   async handleWorkflowFailureFromTask(workflowRunId: string, taskId: string, error: WorkflowErrorSummary) {
