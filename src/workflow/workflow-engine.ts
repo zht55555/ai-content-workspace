@@ -28,8 +28,10 @@ export class WorkflowEngine {
   private readonly finalizationService: WorkflowFinalizationService;
   private readonly analysisResultRepository: AnalysisResultRepository;
   private readonly usageService: WorkflowUsageService;
+  private readonly onCompleted?: (workflowRunId: string, taskId: string) => void | Promise<void>;
+  private readonly onFailed?: (workflowRunId: string, taskId: string, error: WorkflowErrorSummary) => void | Promise<void>;
 
-  constructor(options: { provider?: ReturnType<typeof getLLMProvider>; workflowRepository?: WorkflowRepository; taskRepository?: TaskRepository; eventPublisher?: WorkflowEventPublisher; finalizationService?: WorkflowFinalizationService; analysisResultRepository?: AnalysisResultRepository; usageService?: WorkflowUsageService } = {}) {
+  constructor(options: { provider?: ReturnType<typeof getLLMProvider>; workflowRepository?: WorkflowRepository; taskRepository?: TaskRepository; eventPublisher?: WorkflowEventPublisher; finalizationService?: WorkflowFinalizationService; analysisResultRepository?: AnalysisResultRepository; usageService?: WorkflowUsageService; onCompleted?: (workflowRunId: string, taskId: string) => void | Promise<void>; onFailed?: (workflowRunId: string, taskId: string, error: WorkflowErrorSummary) => void | Promise<void> } = {}) {
     this.provider = options.provider ?? getLLMProvider();
     this.workflowRepository = options.workflowRepository ?? new WorkflowRepository();
     this.taskRepository = options.taskRepository ?? new TaskRepository();
@@ -37,6 +39,8 @@ export class WorkflowEngine {
     this.finalizationService = options.finalizationService ?? new WorkflowFinalizationService();
     this.analysisResultRepository = options.analysisResultRepository ?? new AnalysisResultRepository();
     this.usageService = options.usageService ?? new WorkflowUsageService();
+    this.onCompleted = options.onCompleted;
+    this.onFailed = options.onFailed;
   }
 
   async runWorkflow(taskId: string, definition: WorkflowDefinition = demoContentWorkflow) {
@@ -130,7 +134,9 @@ export class WorkflowEngine {
           await this.workflowRepository.updateRun(created.run.id, { status: "FAILED", errorMessage: message, failedAt: new Date() });
           await this.taskRepository.updateStatus(task.task.id, "FAILED");
           await this.publish({ eventType: "workflow.step.failed", workflowRunId: created.run.id, taskId: task.task.id, step, retryCount, error: this.errorSummary(lastError) });
-          await this.publish({ eventType: "workflow.failed", workflowRunId: created.run.id, taskId: task.task.id, error: this.errorSummary(lastError) });
+          const errorSummary = this.errorSummary(lastError);
+          await this.onFailed?.(created.run.id, task.task.id, errorSummary);
+          await this.publish({ eventType: "workflow.failed", workflowRunId: created.run.id, taskId: task.task.id, error: errorSummary });
           return this.getRun(created.run.id);
         }
         context.previousStepOutputs[definitionStep.key] = output;
@@ -152,9 +158,11 @@ export class WorkflowEngine {
           const summary = this.errorSummary(error);
           await this.workflowRepository.updateRun(created.run.id, { status: "FAILED", errorMessage: summary.message, failedAt: new Date() });
           await this.taskRepository.updateStatus(task.task.id, "FAILED");
+          await this.onFailed?.(created.run.id, task.task.id, summary);
           await this.publish({ eventType: "workflow.failed", workflowRunId: created.run.id, taskId: task.task.id, error: summary });
           return this.getRun(created.run.id);
         }
+        await this.onCompleted?.(created.run.id, task.task.id);
         await this.publish({ eventType: "workflow.completed", workflowRunId: created.run.id, taskId: task.task.id, resultAvailable: true });
         return this.getRun(created.run.id);
       }
@@ -174,6 +182,7 @@ export class WorkflowEngine {
     try {
       await this.workflowRepository.updateRun(runId, { status: "FAILED", errorMessage: summary.message, failedAt: new Date() });
       await this.taskRepository.updateStatus(taskId, "FAILED");
+      await this.onFailed?.(runId, taskId, summary);
       await this.publish({ eventType: "workflow.failed", workflowRunId: runId, taskId, error: summary });
     } catch (persistenceError) {
       console.error("Unexpected workflow failure could not be persisted.", persistenceError);

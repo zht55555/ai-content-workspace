@@ -33,13 +33,14 @@ describe("content library pages", () => {
     expect(empty).toContain("创建第一条内容");
   });
 
-  it("renders content detail, original material and disabled AI placeholder", () => {
+  it("renders content detail, original material and enabled AI processing action", () => {
     const html = renderToStaticMarkup(React.createElement(ContentDetail, { content: { ...item, currentVersionId: "version-1", currentVersion: { id: "version-1", versionNumber: 1, source: "ORIGINAL", contentJson: { schemaVersion: "content-deliverable.v1", script: "", titles: [], coverCopy: [], publishCopy: "", keywords: [] } } }, loading: false, error: null, onRetry: () => undefined, onUpdated: () => undefined }));
     expect(html).toContain("春季新品短视频");
     expect(html).toContain("今天分享一个春季新品内容。");
     expect(html).toContain("Current Version");
     expect(html).toContain("ORIGINAL");
     expect(html).toContain("AI Analysis 尚未开始");
-    expect(html).toContain("disabled");
+    expect(html).toContain("Start AI Processing");
+    expect(html).not.toContain("disabled=\"\"");
   });
 });

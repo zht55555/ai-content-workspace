@@ -51,6 +51,11 @@ export class TaskRepository {
     return result[0];
   }
 
+  async findLatestForContent(contentItemId: string, userId: string) {
+    const [task] = await this.database.select({ id: schema.tasks.id }).from(schema.tasks).where(and(eq(schema.tasks.contentItemId, contentItemId), eq(schema.tasks.userId, userId))).orderBy(desc(schema.tasks.createdAt)).limit(1);
+    return task ? this.findById(task.id) : undefined;
+  }
+
   async list(options: { userId: string; offset: number; limit: number; status?: schema.TaskStatus; contentType?: "TRANSCRIPT" | "COPY" | "TOPIC" }) {
     const filters = [eq(schema.tasks.userId, options.userId)];
     if (options.status) filters.push(eq(schema.tasks.status, options.status));
