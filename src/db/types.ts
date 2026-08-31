@@ -1,6 +1,7 @@
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 
 import type { analysisResults, contentItems, contentVersions, reviews, taskInputs, tasks, users, workflowRuns, workflowSteps } from "./schema";
+import type { ContentVersionDTO as ContentVersionDTOType, ReviewDTO as ReviewDTOType } from "@/src/modules/content/content.types";
 
 export type UserRecord = InferSelectModel<typeof users>;
 export type TaskRecord = InferSelectModel<typeof tasks>;
@@ -12,3 +13,7 @@ export type NewTaskRecord = InferInsertModel<typeof tasks>;
 export type ContentItemRecord = InferSelectModel<typeof contentItems>;
 export type ContentVersionRecord = InferSelectModel<typeof contentVersions>;
 export type ReviewRecord = InferSelectModel<typeof reviews>;
+export type ContentVersionRow = ContentVersionRecord;
+export type ReviewRow = ReviewRecord;
+export type ContentVersionDTO = ContentVersionDTOType;
+export type ReviewDTO = ReviewDTOType;

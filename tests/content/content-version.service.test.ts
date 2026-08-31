@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { ContentVersionService } from "@/src/modules/content/content-version.service";
+import type { ContentVersionDTO } from "@/src/modules/content/content.types";
 
 const payload = { schemaVersion: "content-deliverable.v1" as const, script: "脚本", titles: ["标题"], coverCopy: ["封面"], publishCopy: "发布文案", keywords: ["关键词"] };
 
@@ -22,6 +23,9 @@ describe("ContentVersionService", () => {
     const repository = { findLatestForContent: async () => ({ id: "version-2", contentItemId: "content-1", versionNumber: 2 }) };
     const service = new ContentVersionService(repository as never);
 
-    await expect(service.createVersion({ contentItemId: "content-1", createdBy: "user-1", source: "HUMAN_EDIT", baseVersionId: "version-1", payload })).rejects.toMatchObject({ code: "VERSION_CONFLICT" });
+    const dto: ContentVersionDTO = { id: "version-2", contentItemId: "content-1", versionNumber: 2, source: "HUMAN_EDIT", createdBy: "user-1", baseVersionId: "version-1", workflowRunId: null, analysisResultId: null, contentJson: payload, isFinal: false, createdAt: "2026-08-31T00:00:00.000Z" };
+
+    expect(dto.contentJson).toEqual(payload);
+    await expect(service.createVersion({ contentItemId: "content-1", createdBy: "user-1", source: "HUMAN_EDIT", baseVersionId: "version-1", payload })).rejects.toMatchObject({ name: "StaleVersionError", code: "VERSION_CONFLICT" });
   });
 });

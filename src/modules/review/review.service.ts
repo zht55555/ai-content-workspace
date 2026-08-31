@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { ReviewRepository } from "./review.repository";
-import { ContentError } from "@/src/modules/content/content.errors";
+import { NonCurrentReviewTargetError } from "@/src/modules/content/content.errors";
 
 const createReviewSchema = z.object({
   contentItemId: z.string().uuid(),
@@ -17,7 +17,7 @@ export class ReviewService {
   async createReview(input: unknown) {
     const data = createReviewSchema.parse(input);
     const version = await this.repository.findVersion(data.contentVersionId);
-    if (!version || version.contentItemId !== data.contentItemId) throw new ContentError("CONTENT_NOT_FOUND", "Content version was not found for this ContentItem.");
+    if (!version || version.contentItemId !== data.contentItemId) throw new NonCurrentReviewTargetError("Content version was not found for this ContentItem.");
     return this.repository.insert(data);
   }
 }
