@@ -5,5 +5,5 @@ import { WorkspaceShell } from "./workspace-shell";
 
 export function WorkspaceRouteShell() {
   const pathname = usePathname();
-  return pathname === "/contents" || pathname.startsWith("/contents/") ? null : <WorkspaceShell />;
+  return pathname === "/" || pathname === "/reviews" || pathname === "/contents" || pathname.startsWith("/contents/") ? null : <WorkspaceShell />;
 }
