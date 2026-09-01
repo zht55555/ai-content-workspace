@@ -1,114 +1,92 @@
-# AI Content Workflow
+# AI Content Workspace
 
-AI 内容生产与运营自动化工作台。当前项目处于 Phase 1：提供 Next.js 项目骨架、TypeScript strict、Tailwind CSS、shadcn/ui 基础配置，以及 PostgreSQL + Drizzle ORM 持久化基础设施。
+一个面向内容创作者、内容运营和小型内容团队的 AI 内容生产工作台。它把“原始素材 → AI 分析 → 可编辑交付物 → 人工审核 → 最终版本”收进同一条可追踪的业务流程，解决素材分散、AI 结果难以落地、审核上下文丢失和版本覆盖等问题。
 
-Task API、Workflow Engine、SSE、LLM Provider 和 AI 业务逻辑尚未在本阶段实现。
+## 产品定位
 
-## 环境要求
+这是一个以内容业务对象为中心的 AI Workspace Demo：AI 负责分析和生成建议，人负责编辑、判断和批准。产品入口是 Dashboard、Content Library 和 Review Center；Task / Workflow 页面仍保留，用于技术执行诊断，但不再是产品主入口。
 
-- Node.js 22+
-- npm 10+
-- PostgreSQL 14+
-
-## 本地启动
-
-1. 安装依赖：
-
-   ```text
-   npm install
-   ```
-
-2. 创建本地环境文件：
-
-   ```text
-   Copy-Item .env.example .env
-   ```
-
-   将 `.env` 中的 `DATABASE_URL` 改为你的 PostgreSQL 连接串。`.env` 不得提交到 Git。
-
-3. 创建数据库并生成 Migration：
-
-   ```text
-   npm run db:generate
-   npm run db:migrate
-   ```
-
-4. 写入 Demo User：
-
-   ```text
-   npm run db:seed
-   ```
-
-5. 启动开发服务：
-
-   ```text
-   npm run dev
-   ```
-
-   然后打开 `http://localhost:3000`。
-
-## 验证命令
+## 核心流程
 
 ```text
-npm run db:check
+创建 ContentItem
+  → ORIGINAL Version
+  → AI Processing（Task + Workflow + SSE）
+  → AnalysisResult + AI_GENERATED Version
+  → Human Edit（HUMAN_EDIT Version）
+  → Review
+  → Request Revision / Regenerate 或 Approve
+  → Final Version
+```
+
+## 功能模块
+
+- **Dashboard**：从 PostgreSQL 聚合 Draft、AI Processing、Waiting Review、Needs Revision、Approved，以及最近内容、待审核内容和最近完成内容。
+- **Content Library**：创建、搜索、Platform / Status 筛选、编辑、归档和查看详情。
+- **Content Detail**：Original Content、只读 AI Analysis、Script Studio、Review、Version History、五字段 Before / After Compare、Execution Detail。
+- **Review Center**：集中找到 Waiting Review、Needs Revision、Recently Approved、Recently Rejected 内容；具体审核动作复用 Content Detail 的 Review API。
+- **Workflow Execution**：Task、WorkflowRun、WorkflowStep、Structured Output、Retry 和 SSE 技术诊断页面。
+
+## 数据与版本职责
+
+- `ContentItem` 保存业务对象、原始素材、业务状态和当前版本指针。
+- `AnalysisResult` 保存 AI 分析结果：Analysis、Hook、Structure、Emotion、Optimization。
+- `ContentVersion` 只保存可编辑和待发布 Deliverable：Script、Titles、Cover Copy、Publish Copy、Keywords。每个 AI 或人工结果都是新版本，不覆盖旧版本。
+- `Review` 必须绑定具体 `ContentVersion`，保留每次审核的 decision 和 note 历史。
+
+## 技术架构
+
+- Next.js App Router + React + TypeScript strict
+- PostgreSQL + Drizzle ORM
+- 领域服务 / Repository 分层，业务状态转换集中在 Content State Machine
+- `WorkflowEngine` 负责技术执行，`StructuredGenerationService` 负责 Prompt 组装和 Zod 结构化校验
+- `DemoProvider` 和 `DeepSeekProvider` 共享 `LLMProvider` 抽象
+- Content Business Status 与 Task / Workflow Technical Status 分离
+
+## AI Workflow 与 Human-in-the-loop
+
+`FULL_CONTENT_ANALYSIS` 按固定顺序执行七步：Content Analysis、Hook、Structure、Emotion、Optimization、Script Generation、Marketing Content。最终完整结果写入 `AnalysisResult`；从结果中提取 Deliverable 写入 `ContentVersion`。
+
+人工编辑使用 `baseVersionId` 乐观锁。当前版本已变化时返回 `409 VERSION_CONFLICT`，不会静默覆盖。审核只允许针对当前版本，Approve 会把该版本标记为唯一 Final；Request Revision 和 Reject 保留全部版本与审核历史。
+
+## SSE / Snapshot
+
+详情页先读取持久化 Snapshot，再通过 SSE 接收增量事件。Snapshot 是刷新和断线恢复的权威来源，SSE 只提供实时体验；连接断开后页面仍可通过重新读取 Snapshot 恢复状态。Workflow Timeline 只作为 Content Detail 的 Execution Detail 辅助区域。
+
+## 启动项目
+
+环境要求：Node.js 22+、npm 10+、PostgreSQL 14+。
+
+```bash
+npm install
+cp .env.example .env
+# 在 .env 中设置 DATABASE_URL
+npm run db:migrate
+npm run db:seed
+npm run dev
+```
+
+打开 <http://localhost:3000>。
+
+常用检查：
+
+```bash
 npm run lint
 npm run typecheck
 npm test
 npm run build
+npm run db:check
 ```
 
-如果没有配置 `DATABASE_URL`，数据库集成测试会被跳过；Schema 合约测试仍会执行。要验证真实 Migration 与 Seed，请配置可访问的 PostgreSQL 连接后运行：
+## Provider 配置
 
-```text
-npm run db:migrate
-npm run db:seed
-npm test -- tests/db/seed.test.ts
+默认使用无需密钥的 DemoProvider：
+
+```env
+LLM_PROVIDER=demo
 ```
 
-## 数据库目录
-
-- `src/db/schema.ts`：Drizzle 表定义、枚举、关联和推导类型。
-- `src/db/client.ts`：持久化数据库连接池与 Drizzle Client。
-- `src/db/seed.ts`：幂等 Demo User Seed。
-- `drizzle/`：版本化 SQL Migration 文件。
-- `drizzle.config.ts`：Drizzle Kit 配置。
-
-## 后续 DeepSeek 配置
-
-Phase 1 不调用大模型。后续接入阶段将使用 `LLM_PROVIDER=deepseek`、`DEEPSEEK_API_KEY` 和 `DEEPSEEK_MODEL`；当前这些变量只作为环境配置预留。
-
-## Task API
-
-Phase 2 已提供 Task 基础管理接口，所有任务自动绑定 Seed 创建的 Demo User。
-
-```text
-POST   /api/tasks                 创建 Task 与 TaskInput
-GET    /api/tasks                 分页查询，可按 status/type 筛选
-GET    /api/tasks/:taskId         查询 Task 详情
-PATCH  /api/tasks/:taskId         更新 title 或 status
-DELETE /api/tasks/:taskId         删除 Task 及其 TaskInput
-POST   /api/tasks/:taskId/run     启动 Demo Content Workflow
-GET    /api/workflow-runs/:runId  查询 WorkflowRun 与 Steps
-GET    /api/tasks/:taskId/results/latest  查询最新成功的完整内容分析结果
-```
-
-创建请求示例：
-
-```json
-{
-  "title": "分析这条短视频逐字稿",
-  "type": "TRANSCRIPT_ANALYSIS",
-  "input": {
-    "inputType": "TRANSCRIPT",
-    "content": "这里是一段短视频逐字稿...",
-    "metadata": { "language": "zh-CN" }
-  }
-}
-```
-
-## LLM Provider
-
-Phase 3 已建立统一的 LLM Provider 抽象，默认使用 Demo Provider，不需要 API Key 即可运行 Provider 测试。后续业务接入 DeepSeek 时，在 `.env` 中设置：
+使用 DeepSeek：
 
 ```env
 LLM_PROVIDER=deepseek
@@ -117,59 +95,8 @@ DEEPSEEK_BASE_URL=https://api.deepseek.com
 DEEPSEEK_MODEL=deepseek-chat
 ```
 
-Phase 3 不会自动调用真实模型；只有显式调用 Provider 时才会发送请求。
+可设置 `DEMO_DELAY_MS=500` 观察异步 Processing 和 SSE 状态。
 
-Phase 4 使用 `DEMO_CONTENT_WORKFLOW` 验证三步顺序执行、状态持久化、Retry 和 Task 状态联动；本阶段不包含 SSE 或工作台 UI。
+## 架构限制与未来方向
 
-## Structured Output
-
-Phase 5 新增独立 Prompt Registry 和 `StructuredGenerationService`。Provider 负责单次请求、JSON 解析和 Provider 错误转换；StructuredGenerationService 负责 Prompt 构建、Zod 校验和最多两次业务级重试。
-
-当前注册了七个版本为 1 的内容 Prompt：`content-analysis`、`hook-analysis`、`structure-analysis`、`emotion-analysis`、`optimization`、`script-generation` 和 `marketing-content`。
-
-`StructuredContentDemoService` 只执行三个结构化步骤：`content-analysis` → `hook-analysis` → `structure-analysis`。各步骤通过 Zod 推导类型传递结果，不依赖 Markdown 解析。本阶段未新增公开 API、数据库字段或 Migration，也未实现 SSE、UI 或完整内容 Workflow。
-
-## Full Content Analysis
-
-Phase 7 新增 `FULL_CONTENT_ANALYSIS`，固定执行七个结构化 Step：
-
-```text
-content-analysis → hook-analysis → structure-analysis → emotion-analysis
-→ optimization → script-generation → marketing-content
-```
-
-启动请求：
-
-```json
-{ "workflowType": "FULL_CONTENT_ANALYSIS", "async": true }
-```
-
-完整结果由 `ContentAnalysisResultSchema` 最终校验后，通过 Finalization Transaction 同时写入 `AnalysisResult`、WorkflowRun 和 Task；事务提交成功后才发布 `workflow.completed`。结果查询接口为：
-
-```text
-GET /api/tasks/:taskId/results/latest
-```
-
-Workflow 页面通过 Snapshot + SSE 展示七步进度，收到 `resultAvailable` 后从上述接口加载正式结果。每次 Structured Provider 调用都会写入 `LLMUsage`；DemoProvider 的 Token 为 0，真实 Provider 未返回 usage 时对应字段保持 NULL，不将未知值统计为真实零消耗。
-
-## Workflow SSE
-
-Phase 6 新增独立的 Workflow Event Bus 与 SSE 事件流。Workflow Engine 只依赖事件发布接口，不依赖 HTTP 或 React；事件在单个持久 Node.js 进程内按 `workflowRunId` 路由。
-
-```text
-POST /api/tasks/:taskId/run
-{ "workflowType": "STRUCTURED_CONTENT_DEMO", "async": true }
-GET  /api/workflow-runs/:runId
-GET  /api/workflow-runs/:runId/events
-GET  /workflow-runs/:runId
-```
-
-详情页先读取 Snapshot，再通过 EventSource 接收后续事件。Snapshot 是最终状态的来源，SSE 只负责实时更新；已结束的 Run 不会保持长连接。SSE 使用标准事件名、事件 ID、JSON 数据和 20 秒 heartbeat，连接关闭时会清理订阅与定时器。
-
-## Phase 8 Workspace UI
-
-首页 `/` 是 AI Content Workspace 的空态与新建任务入口；打开任务后使用 `/tasks/:taskId` 作为唯一持久 URL。工作台采用桌面端三栏布局：左侧是 Task History，中间是任务详情与 `FULL_CONTENT_ANALYSIS` 七步 Timeline，右侧通过 `GET /api/tasks/:taskId/results/latest` 展示正式 AnalysisResult。
-
-工作台先读取 Workflow Snapshot，再复用现有 SSE Hook 和 Reducer 接收增量事件。Workflow 完成后才请求 Result API，前端不会从 Step Output 或 SSE payload 拼装最终结果。失败任务使用现有 `POST /api/tasks/:taskId/run` 重新启动，旧 WorkflowRun 保留。默认使用 DemoProvider，不需要配置真实模型密钥即可本地演示。
-
-本地调试异步事件时可设置 `DEMO_DELAY_MS=500`，让 DemoProvider 延迟返回，便于观察 Step Timeline。Phase 6 不新增数据库表或 Migration，也不实现 Event Store、跨进程广播、登录和真实 LLM 调用。
+当前 Demo 使用 Demo User 和单进程内事件总线，未实现登录、多租户、OAuth、权限系统、自动发布、爬虫、文件或音视频上传。未来可以在明确产品需求后增加身份与权限、持久化事件存储、发布渠道适配和更强的搜索能力；RAG、MCP、Tool Calling、Multi-Agent、向量数据库等不属于当前产品闭环。

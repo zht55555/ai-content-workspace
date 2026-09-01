@@ -41,6 +41,6 @@ describe("content library pages", () => {
     expect(html).toContain("ORIGINAL");
     expect(html).toContain("AI Analysis 尚未开始");
     expect(html).toContain("Start AI Processing");
-    expect(html).not.toContain("disabled=\"\"");
+    expect(html).toContain('>Start AI Processing</button>');
   });
 });

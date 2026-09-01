@@ -35,3 +35,9 @@ export function getContentProcessing(contentId: string) {
 export function startContentProcessing(contentId: string) {
   return requestJson<ContentProcessingState & { status: "AI_PROCESSING" }>(`/api/contents/${encodeURIComponent(contentId)}/processing`, { method: "POST" });
 }
+
+export function listContentVersions(contentId: string) { return requestJson<unknown[]>(`/api/contents/${encodeURIComponent(contentId)}/versions`); }
+export function createHumanEdit(contentId: string, input: { baseVersionId: string; payload: unknown }) { return requestJson<unknown>(`/api/contents/${encodeURIComponent(contentId)}/versions`, { method: "POST", body: JSON.stringify(input) }); }
+export function compareContentVersions(contentId: string, versionId: string, withVersionId: string) { return requestJson<unknown>(`/api/contents/${encodeURIComponent(contentId)}/versions/${encodeURIComponent(versionId)}/compare?withVersionId=${encodeURIComponent(withVersionId)}`); }
+export function listContentReviews(contentId: string) { return requestJson<unknown[]>(`/api/contents/${encodeURIComponent(contentId)}/reviews`); }
+export function createContentReview(contentId: string, input: { contentVersionId: string; decision: "APPROVED" | "NEEDS_REVISION" | "REJECTED"; note?: string }) { return requestJson<unknown>(`/api/contents/${encodeURIComponent(contentId)}/reviews`, { method: "POST", body: JSON.stringify(input) }); }

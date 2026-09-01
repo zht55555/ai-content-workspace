@@ -55,6 +55,19 @@ describe.skipIf(!runIntegrationTests)("Content AI processing integration", () =>
     expect(version).toMatchObject({ source: "AI_GENERATED", workflowRunId: started.workflowRunId, analysisResultId: analysis?.id, baseVersionId: content.content.currentVersionId, isFinal: true });
     expect(version?.contentJson).toEqual(expect.objectContaining({ schemaVersion: "content-deliverable.v1", script: expect.any(String), titles: expect.any(Array), coverCopy: expect.any(Array), publishCopy: expect.any(String), keywords: expect.any(Array) }));
     expect(version?.contentJson).not.toHaveProperty("analysis");
+
+    await contentRepository.updateStatus(content.content.id, "WAITING_REVIEW");
+    const regenerated = await service.start(content.content.id);
+    let regeneratedContent = await contentRepository.findById(content.content.id);
+    for (let attempt = 0; attempt < 80 && regeneratedContent?.status === "AI_PROCESSING"; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      regeneratedContent = await contentRepository.findById(content.content.id);
+    }
+    expect(regeneratedContent?.status).toBe("WAITING_REVIEW");
+    const allVersions = await db.select().from(schema.contentVersions).where(eq(schema.contentVersions.contentItemId, content.content.id));
+    const regeneratedVersion = allVersions.find((item) => item.id === regeneratedContent?.currentVersionId);
+    expect(regeneratedVersion).toMatchObject({ source: "AI_REGENERATED", workflowRunId: regenerated.workflowRunId, isFinal: true });
+    expect(allVersions.filter((item) => item.isFinal)).toHaveLength(1);
   }, 60_000);
 
   it("restores a reviewable status and keeps the current version after a workflow failure", async () => {
