@@ -8,7 +8,7 @@ const compat = new FlatCompat({ baseDirectory: projectDirectory });
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
-    ignores: [".next/**", "node_modules/**", "drizzle/**", "next-env.d.ts"],
+    ignores: [".next/**", ".worktrees/**", "node_modules/**", "drizzle/**", "next-env.d.ts"],
   },
 ];
 
