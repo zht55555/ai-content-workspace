@@ -90,10 +90,13 @@ export class ContentRepository {
 
   async finalizeAiGenerated(input: { contentItemId: string; createdBy: string; workflowRunId: string; analysisResultId: string; baseVersionId: string | null; source?: "AI_GENERATED" | "AI_REGENERATED"; contentJson: unknown }) {
     return this.database.transaction(async (transaction) => {
+      const [lockedContent] = await transaction.select({ id: schema.contentItems.id }).from(schema.contentItems).where(eq(schema.contentItems.id, input.contentItemId)).for("update");
+      if (!lockedContent) throw new ContentError("CONTENT_NOT_FOUND", "ContentItem was not found.");
       const existing = await transaction.select().from(schema.contentVersions).where(and(eq(schema.contentVersions.contentItemId, input.contentItemId), eq(schema.contentVersions.workflowRunId, input.workflowRunId)));
       if (existing[0]) return { version: existing[0], content: await this.findById(input.contentItemId) };
 
       const latest = await transaction.select({ versionNumber: schema.contentVersions.versionNumber }).from(schema.contentVersions).where(eq(schema.contentVersions.contentItemId, input.contentItemId)).orderBy(desc(schema.contentVersions.versionNumber)).limit(1);
+      await transaction.update(schema.contentVersions).set({ isFinal: false }).where(eq(schema.contentVersions.contentItemId, input.contentItemId));
       const [version] = await transaction.insert(schema.contentVersions).values({ contentItemId: input.contentItemId, versionNumber: (latest[0]?.versionNumber ?? 0) + 1, source: input.source ?? "AI_GENERATED", createdBy: input.createdBy, baseVersionId: input.baseVersionId ?? undefined, workflowRunId: input.workflowRunId, analysisResultId: input.analysisResultId, contentJson: input.contentJson, isFinal: true }).returning();
       if (!version) throw new Error("AI-generated ContentVersion creation failed.");
       const [content] = await transaction.update(schema.contentItems).set({ currentVersionId: version.id, status: "WAITING_REVIEW", lastError: null, updatedAt: new Date() }).where(eq(schema.contentItems.id, input.contentItemId)).returning();
